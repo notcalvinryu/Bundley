@@ -1,0 +1,345 @@
+{%- assign config = product.metafields.quantity_breaks.config.value -%}
+{%- if config and config.tiers and config.tiers.size > 0 -%}
+  {%- assign base = config.basePrice -%}
+  {%- assign current_variant = product.selected_or_first_available_variant -%}
+  {%- assign variant_id = current_variant.id -%}
+  {%- assign theme = config.theme -%}
+  {%- assign is_bxgy = false -%}
+  {%- if config.type == 'BXGY' -%}{%- assign is_bxgy = true -%}{%- endif -%}
+  {%- comment -%}
+    Per-item variant pickers ("Let customers choose different variants for each
+    item"): only when enabled and the product actually has multiple variants.
+  {%- endcomment -%}
+  {%- assign per_item_variants = false -%}
+  {%- if theme.letChooseVariantPerItem and product.variants.size > 1 -%}
+    {%- assign per_item_variants = true -%}
+  {%- endif -%}
+  {%- assign picker_type = theme.variantPickerType | default: 'dropdown' -%}
+  {%- assign swatch_size = theme.swatchSize | default: 36 -%}
+
+  {%- comment -%}
+    Resolve the tier selected on load: explicit default tier (matched by
+    quantity) first, then the highlighted tier, then the first tier.
+  {%- endcomment -%}
+  {%- assign selected_qty = blank -%}
+  {%- if theme.defaultTierQuantity != blank -%}
+    {%- for t in config.tiers -%}
+      {%- if t.quantity == theme.defaultTierQuantity -%}
+        {%- assign selected_qty = t.quantity -%}
+        {%- break -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+  {%- if selected_qty == blank -%}
+    {%- for t in config.tiers -%}
+      {%- if t.highlight -%}
+        {%- assign selected_qty = t.quantity -%}
+        {%- break -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+  {%- if selected_qty == blank -%}
+    {%- assign selected_qty = config.tiers.first.quantity -%}
+  {%- endif -%}
+
+  <div
+    class="qb-widget"
+    data-qb-widget
+    data-variant-id="{{ variant_id }}"
+    data-qb-show-compare="{% if theme.showCompareAt == false %}0{% else %}1{% endif %}"
+    style="
+      display: none;
+      --qb-header: {{ theme.headerColor | default: '#1a1a1a' }};
+      --qb-border: {{ theme.borderColor | default: '#e3e3e3' }};
+      --qb-accent: {{ theme.accentColor | default: '#3b5bfd' }};
+      --qb-selected-bg: {{ theme.selectedBgColor | default: '#f5f7ff' }};
+      --qb-badge-bg: {{ theme.badgeBgColor | default: '#e11d48' }};
+      --qb-badge-text: {{ theme.badgeTextColor | default: '#ffffff' }};
+      --qb-label: {{ theme.labelColor | default: '#1a1a1a' }};
+      --qb-subtitle: {{ theme.subtitleColor | default: '#6b7280' }};
+      --qb-price: {{ theme.priceColor | default: '#1a1a1a' }};
+      --qb-compare: {{ theme.compareAtColor | default: '#9ca3af' }};
+      --qb-font-family: {{ theme.fontFamily | default: 'inherit' }};
+      --qb-font-size: {{ theme.fontSize | default: 14 }}px;
+      --qb-tier-radius: {{ theme.tierRadius | default: 12 }}px;
+      --qb-swatch-size: {{ swatch_size }}px;
+    "
+    {{ block.shopify_attributes }}
+  >
+    {%- if per_item_variants -%}
+      {%- comment -%}
+        Variant data so the script can resolve the chosen option values to a
+        variant id and sync it (plus the selected tier's quantity) to the
+        theme's product form.
+      {%- endcomment -%}
+      <script type="application/json" data-qb-variants>
+        [{%- for v in product.variants -%}{"id":{{ v.id }},"options":{{ v.options | json }},"available":{{ v.available }}}{%- unless forloop.last -%},{%- endunless -%}{%- endfor -%}]
+      </script>
+    {%- endif -%}
+
+    {%- if config.headerText != blank -%}
+      <div class="qb-header">{{ config.headerText }}</div>
+    {%- endif -%}
+
+    {%- if theme.countdownEnabled -%}
+      {%- comment -%} Build the timer placeholder token from single braces; writing the double-brace literal here would close this Liquid output tag early. {%- endcomment -%}
+      {%- assign qb_ob = '{' -%}
+      {%- assign qb_cb = '}' -%}
+      {%- assign qb_timer_token = qb_ob | append: qb_ob | append: 'timer' | append: qb_cb | append: qb_cb -%}
+      <div
+        class="qb-countdown"
+        data-qb-countdown
+        data-qb-mode="{{ theme.countdownMode | default: 'FIXED' }}"
+        data-qb-minutes="{{ theme.countdownMinutes | default: 15 }}"
+        data-qb-end="{{ theme.countdownEndDate }}"
+        data-qb-title="{{ theme.countdownTitle | escape }}"
+        style="
+          background: {{ theme.countdownBgColor | default: '#fde8ef' }};
+          color: {{ theme.countdownTextColor | default: '#1a1a1a' }};
+          text-align: {{ theme.countdownAlign | default: 'center' }};
+          font-size: {{ theme.countdownFontSize | default: 13 }}px;
+          border-radius: {{ theme.countdownRadius | default: 8 }}px;
+          padding: {{ theme.countdownPadding | default: 8 }}px 12px;
+          {% if theme.countdownBold %}font-weight: 700;{% endif %}
+          {% if theme.countdownItalic %}font-style: italic;{% endif %}
+        "
+      >{{ theme.countdownTitle | replace: qb_timer_token, '…' }}</div>
+    {%- endif -%}
+
+    <div class="qb-tiers" role="radiogroup" aria-label="{{ config.title | escape }}">
+      {%- for tier in config.tiers -%}
+        {%- assign qty = tier.quantity -%}
+        {%- assign get_qty = tier.getQuantity | default: 0 -%}
+
+        {%- comment -%}
+          Discounted unit price. For BXGY this is the price of each "get" (Y)
+          unit; for quantity breaks it's every unit's price.
+        {%- endcomment -%}
+        {%- assign unit = base -%}
+        {%- if tier.discountType == 'PERCENT' -%}
+          {%- assign factor = 100 | minus: tier.discountValue -%}
+          {%- assign unit = base | times: factor | divided_by: 100.0 -%}
+        {%- elsif tier.discountType == 'FIXED_PER_UNIT' -%}
+          {%- assign unit = base | minus: tier.discountValue -%}
+        {%- endif -%}
+        {%- if unit < 0 -%}{%- assign unit = 0 -%}{%- endif -%}
+
+        {%- if is_bxgy -%}
+          {%- assign add_qty = qty | plus: get_qty -%}
+          {%- assign paid_x = base | times: qty -%}
+          {%- assign paid_y = unit | times: get_qty -%}
+          {%- assign total = paid_x | plus: paid_y -%}
+          {%- assign compare = base | times: add_qty -%}
+        {%- else -%}
+          {%- assign add_qty = qty -%}
+          {%- assign total = unit | times: qty -%}
+          {%- assign compare = base | times: qty -%}
+        {%- endif -%}
+        {%- assign total_cents = total | times: 100 | round -%}
+        {%- assign compare_cents = compare | times: 100 | round -%}
+        {%- assign saved_cents = compare_cents | minus: total_cents -%}
+        {%- assign save_pct = 0 -%}
+        {%- if compare_cents > 0 and saved_cents > 0 -%}
+          {%- assign save_pct = saved_cents | times: 100 | divided_by: compare_cents -%}
+        {%- endif -%}
+
+        {%- assign per_unit_cents = total_cents -%}
+        {%- if add_qty > 0 -%}{%- assign per_unit_cents = total_cents | divided_by: add_qty -%}{%- endif -%}
+        {%- assign show_compare = true -%}
+        {%- if theme.showCompareAt == false -%}{%- assign show_compare = false -%}{%- endif -%}
+
+        {%- assign is_selected = false -%}
+        {%- if qty == selected_qty -%}{%- assign is_selected = true -%}{%- endif -%}
+
+        <div class="qb-tier-wrap{% if is_selected %} qb-tier-wrap--selected{% endif %}">
+        <label
+          class="qb-tier{% if tier.highlight %} qb-tier--highlight{% endif %}{% if is_selected %} qb-tier--selected{% endif %}"
+          data-qb-tier
+          data-qty="{{ qty }}"
+          data-qb-buy="{{ qty }}"
+          data-qb-get="{{ get_qty }}"
+          data-qb-discount-type="{{ tier.discountType }}"
+          data-qb-discount-value="{{ tier.discountValue }}"
+        >
+          {%- if tier.badgeText != blank -%}
+            <span class="qb-badge">{{ tier.badgeText }}</span>
+          {%- endif -%}
+
+          <input
+            class="qb-radio"
+            type="radio"
+            name="qb-tier"
+            value="{{ add_qty }}"
+            {% if is_selected %}checked{% endif %}
+          >
+          <span class="qb-tier__main">
+            <span class="qb-tier__dot" aria-hidden="true"></span>
+            <span class="qb-tier__text">
+              <span class="qb-tier__label">
+                {%- if tier.label != blank -%}
+                  {{ tier.label }}
+                {%- elsif is_bxgy -%}
+                  {%- if tier.discountType == 'PERCENT' and tier.discountValue == 100 -%}
+                    Buy {{ qty }}, get {{ get_qty }} free
+                  {%- else -%}
+                    Buy {{ qty }}, get {{ get_qty }}
+                  {%- endif -%}
+                {%- else -%}
+                  {{ qty }} pcs.
+                {%- endif -%}
+              </span>
+              <span
+                class="qb-tier__subtitle"
+                {% if tier.subtitle == blank %}data-qb-savings{% endif %}
+              >
+                {%- if tier.subtitle != blank -%}
+                  {{ tier.subtitle }}
+                {%- elsif save_pct > 0 -%}
+                  You save {{ save_pct }}%
+                {%- endif -%}
+              </span>
+            </span>
+          </span>
+          <span class="qb-tier__price">
+            <span class="qb-tier__total">{{ total_cents | money }}</span>
+            {%- if theme.showPricePerItem -%}
+              <span class="qb-tier__peritem" data-qb-peritem>{{ per_unit_cents | money }}/ea</span>
+            {%- endif -%}
+            <span
+              class="qb-tier__compare"
+              {% if saved_cents <= 0 or show_compare == false %}hidden{% endif %}
+            >
+              {%- if saved_cents > 0 and show_compare -%}{{ compare_cents | money }}{%- endif -%}
+            </span>
+          </span>
+        </label>
+        {%- if per_item_variants -%}
+          {%- comment -%}
+            Per-item variant pickers for this tier. Grouped by product option
+            (e.g. "Color"), with one dropdown per unit the tier represents
+            (#1, #2, … up to add_qty, incl. BXGY "get" units). Hidden until the
+            tier is selected (JS toggles the `hidden` attr).
+          {%- endcomment -%}
+          <div
+            class="qb-tier__variants"
+            data-qb-tier-variants
+            {% unless is_selected %}hidden{% endunless %}
+          >
+            {%- for option in product.options_with_values -%}
+              {%- assign opt_i = forloop.index0 -%}
+              {%- assign sel_value = current_variant.options[opt_i] -%}
+              <div class="qb-voption" data-qb-option-position="{{ option.position }}">
+                <span class="qb-voption__label">{{ option.name }}</span>
+                {%- for u in (1..add_qty) -%}
+                  {%- assign unit_n = forloop.index -%}
+                  <div class="qb-vrow">
+                    <span class="qb-vrow__num">#{{ unit_n }}</span>
+                    {%- if picker_type == 'color' or picker_type == 'button' -%}
+                      <div
+                        class="qb-swatch-group"
+                        data-qb-swatch-group
+                        data-qb-option-position="{{ option.position }}"
+                        data-qb-unit="{{ unit_n }}"
+                        role="radiogroup"
+                        aria-label="{{ option.name | escape }} for item {{ unit_n }}"
+                      >
+                        {%- for value in option.values -%}
+                          {%- assign value_available = false -%}
+                          {%- for v in product.variants -%}
+                            {%- if v.available and v.options[opt_i] == value -%}
+                              {%- assign value_available = true -%}
+                              {%- break -%}
+                            {%- endif -%}
+                          {%- endfor -%}
+                          {%- unless theme.hideUnavailableVariants and value_available == false -%}
+                            {%- assign is_sel = false -%}
+                            {%- if value == sel_value -%}{%- assign is_sel = true -%}{%- endif -%}
+                            <button
+                              type="button"
+                              class="qb-swatch qb-swatch--{{ picker_type }}{% if is_sel %} qb-swatch--selected{% endif %}{% unless value_available %} qb-swatch--soldout{% endunless %}"
+                              data-qb-swatch
+                              data-qb-value="{{ value | escape }}"
+                              {% if picker_type == 'color' %}style="background: {{ value | downcase | remove: ' ' | escape }};"{% endif %}
+                              aria-label="{{ option.name | escape }}: {{ value | escape }}"
+                              aria-pressed="{% if is_sel %}true{% else %}false{% endif %}"
+                              title="{{ value | escape }}"
+                            >{% if picker_type == 'button' %}{{ value }}{% endif %}</button>
+                          {%- endunless -%}
+                        {%- endfor -%}
+                      </div>
+                    {%- else -%}
+                      <select
+                        class="qb-vselect"
+                        data-qb-vselect
+                        data-qb-option-position="{{ option.position }}"
+                        data-qb-unit="{{ unit_n }}"
+                        aria-label="{{ option.name | escape }} for item {{ unit_n }}"
+                      >
+                        {%- for value in option.values -%}
+                          {%- assign value_available = false -%}
+                          {%- for v in product.variants -%}
+                            {%- if v.available and v.options[opt_i] == value -%}
+                              {%- assign value_available = true -%}
+                              {%- break -%}
+                            {%- endif -%}
+                          {%- endfor -%}
+                          {%- unless theme.hideUnavailableVariants and value_available == false -%}
+                            <option
+                              value="{{ value | escape }}"
+                              {% if value == sel_value %}selected{% endif %}
+                              {% unless value_available %}disabled{% endunless %}
+                            >{{ value }}{% unless value_available %} (sold out){% endunless %}</option>
+                          {%- endunless -%}
+                        {%- endfor -%}
+                      </select>
+                    {%- endif -%}
+                  </div>
+                {%- endfor -%}
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+
+  {%- if theme.hideThemeVariantPicker -%}
+    {%- comment -%}
+      Hide the theme's native variant selector so shoppers choose variants in
+      the widget's swatches instead. Covers Dawn / OS 2.0 custom elements and
+      common vintage selectors.
+    {%- endcomment -%}
+    <style>
+      .qb-app-enabled variant-selects,
+      .qb-app-enabled variant-radios,
+      .qb-app-enabled .product-form__input--pill,
+      .qb-app-enabled .product-form__input--dropdown,
+      .qb-app-enabled .product-form__input--swatch,
+      .qb-app-enabled .single-option-selector,
+      .qb-app-enabled .product-form__input.product-form__input--pill {
+        display: none !important;
+      }
+    </style>
+  {%- endif -%}
+
+  {%- comment -%}
+    The widget's CSS/JS are loaded by the "Quantity Breaks" app embed, not here.
+    This makes the app embed the master switch: with the embed disabled the
+    widget renders no styles or behavior and is effectively inert, even if a
+    merchant has added this block to a section.
+  {%- endcomment -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Quantity breaks",
+  "target": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows the quantity-break tiers configured for this product in the Quantity Breaks app. Set the offer to Active in the app for it to appear here."
+    }
+  ]
+}
+{% endschema %}

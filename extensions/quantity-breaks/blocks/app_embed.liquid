@@ -1,0 +1,31 @@
+{%- comment -%}
+  Quantity Breaks — app embed block.
+
+  Because this block targets "body", it appears in the theme editor under
+  "App embeds" with a built-in on/off toggle. When enabled it loads the shared
+  widget assets so the Quantity Breaks widget works across the storefront. The
+  widget markup itself is rendered by the "Quantity breaks" app block (added to
+  the product page); this embed is the global on/off switch for the app.
+
+  The widget script is idempotent (each [data-qb-widget] guards re-init), so it
+  is safe even if the product-page block also loads these assets.
+{%- endcomment -%}
+{%- if block.settings.enabled -%}
+  {{ 'quantity-breaks.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'quantity-breaks.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Quantity Breaks",
+  "target": "body",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Enable Quantity Breaks",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

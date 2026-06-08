@@ -1,0 +1,63 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": { "amountPerQuantity": { "amount": "40.00" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "metafield": {
+                  "value": "{\"type\":\"BXGY\",\"title\":\"Tee\",\"basePrice\":40,\"tiers\":[{\"quantity\":1,\"getQuantity\":1,\"discountType\":\"PERCENT\",\"discountValue\":100,\"badgeText\":\"BOGO\"}]}"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": { "amountPerQuantity": { "amount": "60.00" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/2",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "metafield": {
+                  "value": "{\"type\":\"BXGY\",\"title\":\"Tee\",\"basePrice\":40,\"tiers\":[{\"quantity\":1,\"getQuantity\":1,\"discountType\":\"PERCENT\",\"discountValue\":100,\"badgeText\":\"BOGO\"}]}"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "FIRST",
+      "discounts": [
+        {
+          "message": "BOGO",
+          "targets": [
+            {
+              "cartLine": {
+                "id": "gid://shopify/CartLine/1",
+                "quantity": 1
+              }
+            }
+          ],
+          "value": {
+            "percentage": {
+              "value": "100"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

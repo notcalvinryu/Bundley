@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// A quantity-break offer: a single product sold with volume-discount tiers
+// (e.g. "buy 2, save 15%"). The tier config is also mirrored onto a product
+// metafield so the theme extension and discount function can read it.
+model Offer {
+  id           String   @id @default(cuid())
+  shop         String
+  title        String
+  type         String   @default("QUANTITY_BREAKS") // discount template, see OFFER_TYPES
+  status       String   @default("DRAFT") // DRAFT | ACTIVE | ARCHIVED
+  productId    String?  // Shopify product GID this offer applies to
+  productTitle String?
+  imageUrl     String?
+  basePrice    Float    @default(0) // unit price snapshot, in shop currency
+  headerText   String?  // banner above the widget, e.g. "BUY MORE = SAVE MORE"
+  theme        String?  // JSON of per-aspect widget colors (see ThemeColors)
+  tiers        Tier[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// One quantity tier within an offer.
+// `discountType` is one of: "PERCENT" (percent off), "FIXED_PER_UNIT" (flat
+// amount off each unit), or "NONE" (no discount, e.g. the single-unit row).
+model Tier {
+  id            String  @id @default(cuid())
+  offerId       String
+  offer         Offer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  quantity      Int     @default(1) // for BXGY this is the "buy" (X) quantity
+  getQuantity   Int? // BXGY: the "get" (Y) quantity rewarded; null for quantity breaks
+  discountType  String  @default("PERCENT") // BXGY: discount applied to the Y units
+  discountValue Float   @default(0)
+  label         String? // row title, e.g. "Single", "Duo", "2 pcs."
+  subtitle      String? // small text, e.g. "Standard price"
+  badgeText     String? // ribbon, e.g. "MOST POPULAR"
+  highlight     Boolean @default(false) // visually emphasize this tier
+  position      Int     @default(0)
+
+  @@index([offerId])
+}

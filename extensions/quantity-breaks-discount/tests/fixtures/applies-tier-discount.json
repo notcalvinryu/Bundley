@@ -1,0 +1,47 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 2,
+            "cost": { "amountPerQuantity": { "amount": "35.00" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "metafield": {
+                  "value": "{\"title\":\"Tee\",\"basePrice\":35,\"tiers\":[{\"quantity\":1,\"discountType\":\"NONE\",\"discountValue\":0},{\"quantity\":2,\"discountType\":\"PERCENT\",\"discountValue\":15,\"badgeText\":\"MOST POPULAR\"}]}"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "FIRST",
+      "discounts": [
+        {
+          "message": "MOST POPULAR",
+          "targets": [
+            {
+              "cartLine": {
+                "id": "gid://shopify/CartLine/1"
+              }
+            }
+          ],
+          "value": {
+            "percentage": {
+              "value": "15"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
