@@ -4,6 +4,7 @@ import {
   toMetafield,
   normalizeTheme,
   normalizeOfferType,
+  sanitizeGifts,
   type OfferInput,
 } from "../lib/offer-pricing";
 
@@ -48,6 +49,7 @@ function tierCreateData(input: OfferInput) {
     badgeText: tier.badgeText ?? null,
     highlight: tier.highlight,
     position: index,
+    gifts: JSON.stringify(sanitizeGifts(tier.gifts)),
   }));
 }
 
@@ -199,6 +201,7 @@ export async function syncOfferToMetafield(
         subtitle: tier.subtitle,
         badgeText: tier.badgeText,
         highlight: tier.highlight,
+        gifts: sanitizeGifts(tier.gifts ? JSON.parse(tier.gifts) : []),
       })),
     }),
   );

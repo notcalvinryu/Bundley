@@ -54,6 +54,8 @@ import {
   OFFER_TYPE_META,
   normalizeOfferType,
   isOfferTypeAvailable,
+  sanitizeGifts,
+  type Gift,
   type VariantPickerType,
   type OfferInput,
   type OfferStatus,
@@ -337,6 +339,7 @@ export default function OfferEditor() {
       subtitle: tier.subtitle,
       badgeText: tier.badgeText,
       highlight: tier.highlight,
+      gifts: sanitizeGifts(tier.gifts ? JSON.parse(tier.gifts) : []),
     })) ?? (isBxgy ? defaultBxgyTiers() : defaultTiers()),
   );
   const [theme, setTheme] = useState<WidgetTheme>(() => {
@@ -419,6 +422,41 @@ export default function OfferEditor() {
       }),
     );
   };
+
+  // Pick a product as a free gift for a tier (uses its first variant).
+  const addGift = useCallback(
+    async (tierIndex: number) => {
+      const selection = await shopify.resourcePicker({
+        type: "product",
+        multiple: false,
+      });
+      if (!selection || selection.length === 0) return;
+      const product: any = selection[0];
+      const variant = product.variants?.[0];
+      const gift: Gift = {
+        productId: String(product.id),
+        variantId: String(variant?.id ?? product.id),
+        title: String(product.title ?? "Free gift"),
+        price: variant?.price != null ? Number(variant.price) : 0,
+        imageUrl: product.images?.[0]?.originalSrc ?? null,
+      };
+      setTiers((current) =>
+        current.map((t, i) =>
+          i === tierIndex ? { ...t, gifts: [...(t.gifts ?? []), gift] } : t,
+        ),
+      );
+    },
+    [shopify],
+  );
+
+  const removeGift = (tierIndex: number, giftIndex: number) =>
+    setTiers((current) =>
+      current.map((t, i) =>
+        i === tierIndex
+          ? { ...t, gifts: (t.gifts ?? []).filter((_, gi) => gi !== giftIndex) }
+          : t,
+      ),
+    );
 
   const addTier = () => {
     const nextQty =
@@ -1088,6 +1126,52 @@ export default function OfferEditor() {
                           Remove
                         </Button>
                       </InlineStack>
+                      <Divider />
+                      <BlockStack gap="200">
+                        <Text as="span" variant="headingSm">
+                          Free gifts
+                        </Text>
+                        <Text as="p" tone="subdued" variant="bodySm">
+                          Added free to the cart when a customer buys this tier
+                          (or a higher one).
+                        </Text>
+                        {(tier.gifts ?? []).map((gift, gi) => (
+                          <InlineStack
+                            key={gi}
+                            align="space-between"
+                            blockAlign="center"
+                            gap="200"
+                          >
+                            <InlineStack gap="200" blockAlign="center">
+                              {gift.imageUrl && (
+                                <Thumbnail
+                                  source={gift.imageUrl}
+                                  alt={gift.title}
+                                  size="small"
+                                />
+                              )}
+                              <Text as="span" variant="bodyMd">
+                                + FREE {gift.title}{" "}
+                                <Text as="span" tone="subdued">
+                                  (${gift.price.toFixed(2)})
+                                </Text>
+                              </Text>
+                            </InlineStack>
+                            <Button
+                              variant="plain"
+                              tone="critical"
+                              onClick={() => removeGift(index, gi)}
+                            >
+                              Remove
+                            </Button>
+                          </InlineStack>
+                        ))}
+                        <div>
+                          <Button onClick={() => addGift(index)}>
+                            Add free gift
+                          </Button>
+                        </div>
+                      </BlockStack>
                           </BlockStack>
                         </Collapsible>
                       </BlockStack>
@@ -1817,6 +1901,59 @@ function WidgetPreview({
                   optionName={previewOptionName}
                   values={previewValues}
                 />
+              )}
+              {(tier.gifts ?? []).length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    borderTop: `1px solid ${theme.borderColor}`,
+                    paddingTop: 8,
+                  }}
+                >
+                  {(tier.gifts ?? []).map((gift, gi) => (
+                    <div
+                      key={gi}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: "0.86em",
+                      }}
+                    >
+                      {gift.imageUrl && (
+                        <img
+                          src={gift.imageUrl}
+                          alt=""
+                          width={24}
+                          height={24}
+                          style={{
+                            borderRadius: 5,
+                            objectFit: "cover",
+                            border: `1px solid ${theme.borderColor}`,
+                          }}
+                        />
+                      )}
+                      <span
+                        style={{ fontWeight: 600, color: theme.labelColor }}
+                      >
+                        + FREE {gift.title}
+                      </span>
+                      {gift.price > 0 && (
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            color: theme.compareAtColor,
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          ${gift.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           );

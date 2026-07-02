@@ -405,7 +405,27 @@
 
     var variants = parseVariants(widget);
 
-    // The line items to add for the current selection.
+    // Free gifts for the selected tier: every gift on that tier and on any
+    // lower tier (granted "at/above" its quantity), one of each, deduped.
+    function giftItems(selectedLabel) {
+      var selQty = parseInt(selectedLabel.getAttribute("data-qty"), 10) || 0;
+      var ids = {};
+      tiers.forEach(function (t) {
+        var tq = parseInt(t.getAttribute("data-qty"), 10) || 0;
+        if (tq > selQty) return;
+        (t.getAttribute("data-qb-gift-variants") || "")
+          .split(",")
+          .forEach(function (id) {
+            id = id.trim();
+            if (id) ids[id] = true;
+          });
+      });
+      return Object.keys(ids).map(function (id) {
+        return { id: Number(id), quantity: 1 };
+      });
+    }
+
+    // The line items to add for the current selection (main product + gifts).
     //  • Per-item pickers on  → one line per item, using each item's chosen
     //    variant (identical variants are merged into one line with a count).
     //  • Pickers off           → a single line of the theme's current variant.
@@ -422,6 +442,7 @@
       var wrap = label.closest(".qb-tier-wrap");
       var panel = wrap && wrap.querySelector("[data-qb-tier-variants]");
 
+      var items = null;
       if (panel && variants.length) {
         // Resolve a variant per item, then merge identical ones.
         var counts = {};
@@ -430,18 +451,22 @@
           if (!vid) continue;
           counts[vid] = (counts[vid] || 0) + 1;
         }
-        var items = Object.keys(counts).map(function (id) {
+        var picked = Object.keys(counts).map(function (id) {
           return { id: Number(id), quantity: counts[id] };
         });
-        if (items.length) return items;
+        if (picked.length) items = picked;
       }
 
-      // No per-item pickers: single line of the theme's current variant.
-      var form = findProductForm();
-      var idInput = form && form.querySelector('[name="id"]');
-      var variantId = (idInput && idInput.value) || fallbackId;
-      if (!variantId) return null;
-      return [{ id: Number(variantId), quantity: qty }];
+      if (!items) {
+        // No per-item pickers: single line of the theme's current variant.
+        var form = findProductForm();
+        var idInput = form && form.querySelector('[name="id"]');
+        var variantId = (idInput && idInput.value) || fallbackId;
+        if (!variantId) return null;
+        items = [{ id: Number(variantId), quantity: qty }];
+      }
+
+      return items.concat(giftItems(label));
     }
 
     function select(tier) {

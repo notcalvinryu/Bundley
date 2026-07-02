@@ -71,6 +71,7 @@ model Tier {
   badgeText     String? // ribbon, e.g. "MOST POPULAR"
   highlight     Boolean @default(false) // visually emphasize this tier
   position      Int     @default(0)
+  gifts         String? // JSON array of free gifts granted at/above this tier
 
   @@index([offerId])
 }

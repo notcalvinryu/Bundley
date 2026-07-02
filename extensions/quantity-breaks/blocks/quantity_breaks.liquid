@@ -160,6 +160,7 @@
           data-qb-get="{{ get_qty }}"
           data-qb-discount-type="{{ tier.discountType }}"
           data-qb-discount-value="{{ tier.discountValue }}"
+          data-qb-gift-variants="{% for gift in tier.gifts %}{{ gift.variantId | split: '/' | last }}{% unless forloop.last %},{% endunless %}{% endfor %}"
         >
           {%- if tier.badgeText != blank -%}
             <span class="qb-badge">{{ tier.badgeText }}</span>
@@ -213,6 +214,29 @@
             </span>
           </span>
         </label>
+        {%- if tier.gifts and tier.gifts.size > 0 -%}
+          <div class="qb-gifts">
+            {%- for gift in tier.gifts -%}
+              <div class="qb-gift">
+                {%- if gift.imageUrl != blank -%}
+                  <img
+                    class="qb-gift__img"
+                    src="{{ gift.imageUrl }}"
+                    alt=""
+                    width="28"
+                    height="28"
+                    loading="lazy"
+                  >
+                {%- endif -%}
+                <span class="qb-gift__label">+ FREE {{ gift.title }}</span>
+                {%- if gift.price > 0 -%}
+                  {%- assign gift_cents = gift.price | times: 100 | round -%}
+                  <span class="qb-gift__price">{{ gift_cents | money }}</span>
+                {%- endif -%}
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
         {%- if per_item_variants -%}
           {%- comment -%}
             Per-item variant pickers for this tier. Grouped by product option

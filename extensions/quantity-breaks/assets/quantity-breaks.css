@@ -1,5 +1,5 @@
 .qb-widget {
-  max-width: 460px;
+  width: 100%;
   margin: 16px 0;
   font-family: var(--qb-font-family, inherit);
   font-size: var(--qb-font-size, 14px);
@@ -298,4 +298,40 @@
   display: block;
   font-size: 0.72em;
   color: var(--qb-subtitle, #6b7280);
+}
+
+/* Free gift lines shown under a tier. */
+.qb-gifts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -2px;
+  padding: 8px 14px 4px;
+}
+
+.qb-gift {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86em;
+}
+
+.qb-gift__img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--qb-border, #e3e3e3);
+  flex: 0 0 auto;
+}
+
+.qb-gift__label {
+  font-weight: 600;
+  color: var(--qb-label, #1a1a1a);
+}
+
+.qb-gift__price {
+  margin-left: auto;
+  color: var(--qb-compare, #9ca3af);
+  text-decoration: line-through;
 }

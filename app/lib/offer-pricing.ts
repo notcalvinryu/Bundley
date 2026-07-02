@@ -361,6 +361,16 @@ export function parseTheme(raw?: string | null): WidgetTheme {
   }
 }
 
+// A free gift attached to a tier: a specific variant given at $0 when the tier
+// (by quantity) is met. Unlimited gifts can be stacked on a tier.
+export type Gift = {
+  productId: string; // Shopify product GID (for the admin picker)
+  variantId: string; // Shopify variant GID — what's added to the cart / discounted
+  title: string; // product/variant title shown as "+ FREE <title>"
+  price: number; // regular price, shown struck-through
+  imageUrl: string | null;
+};
+
 export type TierInput = {
   quantity: number; // BXGY: the "buy" (X) quantity
   getQuantity?: number | null; // BXGY: the "get" (Y) quantity; null for quantity breaks
@@ -370,6 +380,7 @@ export type TierInput = {
   subtitle?: string | null;
   badgeText?: string | null;
   highlight: boolean;
+  gifts?: Gift[]; // free gifts granted at/above this tier's quantity
 };
 
 export type OfferInput = {
@@ -557,8 +568,24 @@ export type OfferMetafield = {
     subtitle: string | null;
     badgeText: string | null;
     highlight: boolean;
+    gifts: Gift[];
   }[];
 };
+
+// Keep only well-formed gifts (a valid variant id + numeric price).
+export function sanitizeGifts(gifts: unknown): Gift[] {
+  if (!Array.isArray(gifts)) return [];
+  return gifts
+    .filter((g) => g && typeof g === "object")
+    .map((g: any) => ({
+      productId: String(g.productId ?? ""),
+      variantId: String(g.variantId ?? ""),
+      title: String(g.title ?? "Free gift"),
+      price: typeof g.price === "number" && g.price >= 0 ? g.price : 0,
+      imageUrl: g.imageUrl ? String(g.imageUrl) : null,
+    }))
+    .filter((g) => g.variantId);
+}
 
 export function toMetafield(input: OfferInput): OfferMetafield {
   return {
@@ -579,6 +606,7 @@ export function toMetafield(input: OfferInput): OfferMetafield {
         subtitle: tier.subtitle ?? null,
         badgeText: tier.badgeText ?? null,
         highlight: tier.highlight,
+        gifts: sanitizeGifts(tier.gifts),
       })),
   };
 }

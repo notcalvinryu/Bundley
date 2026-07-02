@@ -167,10 +167,13 @@ export function run(input) {
    * }>}
    */
   const groups = new Map();
+  /** @type {{ lineId: string, variantId: string }[]} */
+  const allLines = [];
 
   for (const line of input.cart.lines) {
     const merchandise = line.merchandise;
     if (merchandise.__typename !== "ProductVariant") continue;
+    allLines.push({ lineId: line.id, variantId: merchandise.id });
 
     const raw = merchandise.product?.metafield?.value;
     const productId = merchandise.product?.id;
@@ -196,6 +199,7 @@ export function run(input) {
   }
 
   const discounts = [];
+  const freeGiftVariantIds = new Set();
   for (const { config, total, lines } of groups.values()) {
     if (!lines.length) continue;
     const targets = lines.map((l) => ({ cartLine: { id: l.id } }));
@@ -204,6 +208,28 @@ export function run(input) {
         ? bxgyDiscount(config, total, lines)
         : quantityBreakDiscount(config, total, targets);
     if (discount) discounts.push(discount);
+
+    // Gifts granted "at/above" any tier whose quantity the total meets.
+    for (const tier of config.tiers || []) {
+      if (typeof tier.quantity === "number" && total >= tier.quantity) {
+        for (const gift of tier.gifts || []) {
+          if (gift && gift.variantId) freeGiftVariantIds.add(gift.variantId);
+        }
+      }
+    }
+  }
+
+  // Make one unit of each granted gift free.
+  if (freeGiftVariantIds.size > 0) {
+    for (const { lineId, variantId } of allLines) {
+      if (freeGiftVariantIds.has(variantId)) {
+        discounts.push({
+          message: "Free gift",
+          targets: [{ cartLine: { id: lineId, quantity: 1 } }],
+          value: { percentage: { value: "100" } },
+        });
+      }
+    }
   }
 
   if (discounts.length === 0) return EMPTY_DISCOUNT;

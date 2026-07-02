@@ -2,7 +2,7 @@
 
 client_id = "57d42e91a1465332c85a51b24dd81cda"
 name = "Bundley"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://bundley.onrender.com"
 embedded = true
 
 [access_scopes]
@@ -26,7 +26,7 @@ api_version = "2026-07"
   topics = [ "app/scopes_update" ]
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [ "https://bundley.onrender.com/auth/callback" ]
 
 [build]
 automatically_update_urls_on_dev = true
