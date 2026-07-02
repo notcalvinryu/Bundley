@@ -44,15 +44,22 @@
 .qb-tier {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   padding: 14px 16px;
   border: 2px solid var(--qb-border, #e3e3e3);
   border-radius: var(--qb-tier-radius, 12px);
   background: #fff;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* Top row of a tier: the label/dot on the left, price on the right. */
+.qb-tier__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .qb-tier--highlight {
@@ -300,15 +307,14 @@
   color: var(--qb-subtitle, #6b7280);
 }
 
-/* Free gift lines shown under a tier. */
+/* Free gift lines, shown inside the tier's border. */
 .qb-gifts {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 4px 0 2px;
   padding: 8px 12px;
   background: var(--qb-gift-bg, #f0fdf4);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .qb-gift {
@@ -336,4 +342,9 @@
   margin-left: auto;
   color: var(--qb-gift-price, #9ca3af);
   text-decoration: line-through;
+}
+
+.qb-gift__free {
+  color: var(--qb-gift-label, #15803d);
+  font-weight: 700;
 }

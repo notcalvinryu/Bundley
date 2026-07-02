@@ -1979,17 +1979,33 @@ function WidgetPreview({
                         + FREE {(gift.quantity ?? 1) > 1 ? `${gift.quantity}× ` : ""}
                         {gift.title}
                       </span>
-                      {gift.price > 0 && (
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        {gift.price > 0 && (
+                          <span
+                            style={{
+                              color: theme.giftPriceColor,
+                              textDecoration: "line-through",
+                            }}
+                          >
+                            ${(gift.price * (gift.quantity ?? 1)).toFixed(2)}
+                          </span>
+                        )}
                         <span
                           style={{
-                            marginLeft: "auto",
-                            color: theme.giftPriceColor,
-                            textDecoration: "line-through",
+                            color: theme.giftLabelColor,
+                            fontWeight: 700,
                           }}
                         >
-                          ${(gift.price * (gift.quantity ?? 1)).toFixed(2)}
+                          $0.00
                         </span>
-                      )}
+                      </span>
                     </div>
                   ))}
                 </div>
