@@ -433,11 +433,18 @@ export default function OfferEditor() {
       if (!selection || selection.length === 0) return;
       const product: any = selection[0];
       const variant = product.variants?.[0];
+      // The picker returns price as a number, a string, or a { amount } object.
+      const rawPrice = variant?.price;
+      let price = 0;
+      if (typeof rawPrice === "number") price = rawPrice;
+      else if (typeof rawPrice === "string") price = Number(rawPrice) || 0;
+      else if (rawPrice && typeof rawPrice === "object")
+        price = Number(rawPrice.amount ?? rawPrice.price ?? 0) || 0;
       const gift: Gift = {
         productId: String(product.id),
         variantId: String(variant?.id ?? product.id),
         title: String(product.title ?? "Free gift"),
-        price: variant?.price != null ? Number(variant.price) : 0,
+        price,
         quantity: 1,
         imageUrl: product.images?.[0]?.originalSrc ?? null,
       };
@@ -1170,14 +1177,28 @@ export default function OfferEditor() {
                                 />
                               )}
                               <Text as="span" variant="bodyMd">
-                                + FREE {gift.title}{" "}
-                                <Text as="span" tone="subdued">
-                                  (${gift.price.toFixed(2)})
-                                </Text>
+                                + FREE {gift.title}
                               </Text>
                             </InlineStack>
                             <InlineStack gap="200" blockAlign="center">
-                              <Box width="88px">
+                              <Box width="110px">
+                                <TextField
+                                  label="Original price"
+                                  labelHidden
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  autoComplete="off"
+                                  prefix="$"
+                                  value={String(gift.price ?? 0)}
+                                  onChange={(v) =>
+                                    updateGift(index, gi, {
+                                      price: Math.max(0, Number(v) || 0),
+                                    })
+                                  }
+                                />
+                              </Box>
+                              <Box width="80px">
                                 <TextField
                                   label="Qty"
                                   labelHidden
