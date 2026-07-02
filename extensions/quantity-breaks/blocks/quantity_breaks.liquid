@@ -3,6 +3,18 @@
   {%- assign base = config.basePrice -%}
   {%- assign current_variant = product.selected_or_first_available_variant -%}
   {%- assign variant_id = current_variant.id -%}
+  {%- comment -%}
+    Per-unit price to strike through: the product's compare-at price when set
+    (so the "original" price shows even on tiers with no volume discount),
+    otherwise the offer's base price. compare_at_price is in cents.
+  {%- endcomment -%}
+  {%- assign compare_base = base -%}
+  {%- if current_variant.compare_at_price and current_variant.compare_at_price > 0 -%}
+    {%- assign cap_dollars = current_variant.compare_at_price | divided_by: 100.0 -%}
+    {%- if cap_dollars > compare_base -%}
+      {%- assign compare_base = cap_dollars -%}
+    {%- endif -%}
+  {%- endif -%}
   {%- assign theme = config.theme -%}
   {%- assign is_bxgy = false -%}
   {%- if config.type == 'BXGY' -%}{%- assign is_bxgy = true -%}{%- endif -%}
@@ -132,11 +144,11 @@
           {%- assign paid_x = base | times: qty -%}
           {%- assign paid_y = unit | times: get_qty -%}
           {%- assign total = paid_x | plus: paid_y -%}
-          {%- assign compare = base | times: add_qty -%}
+          {%- assign compare = compare_base | times: add_qty -%}
         {%- else -%}
           {%- assign add_qty = qty -%}
           {%- assign total = unit | times: qty -%}
-          {%- assign compare = base | times: qty -%}
+          {%- assign compare = compare_base | times: qty -%}
         {%- endif -%}
         {%- assign total_cents = total | times: 100 | round -%}
         {%- assign compare_cents = compare | times: 100 | round -%}
