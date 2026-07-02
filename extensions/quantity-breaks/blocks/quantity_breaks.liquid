@@ -218,32 +218,32 @@
             </span>
           </span>
           </span>
-          {%- if tier.gifts and tier.gifts.size > 0 -%}
-            <div class="qb-gifts">
-              {%- for gift in tier.gifts -%}
-                {%- assign gift_qty = gift.quantity | default: 1 -%}
-                <div class="qb-gift">
-                  {%- if gift.imageUrl != blank -%}
-                    <img
-                      class="qb-gift__img"
-                      src="{{ gift.imageUrl }}"
-                      alt=""
-                      width="28"
-                      height="28"
-                      loading="lazy"
-                    >
-                  {%- endif -%}
-                  <span class="qb-gift__label">+ FREE {% if gift_qty > 1 %}{{ gift_qty }}× {% endif %}{{ gift.title }}</span>
-                  {%- if gift.price > 0 -%}
-                    {%- assign gift_cents = gift.price | times: gift_qty | times: 100 | round -%}
-                    <span class="qb-gift__price">{{ gift_cents | money }}</span>
-                  {%- endif -%}
-                  <span class="qb-gift__free">{{ 0 | money }}</span>
-                </div>
-              {%- endfor -%}
-            </div>
-          {%- endif -%}
         </label>
+        {%- if tier.gifts and tier.gifts.size > 0 -%}
+          <div class="qb-gifts">
+            {%- for gift in tier.gifts -%}
+              {%- assign gift_qty = gift.quantity | default: 1 -%}
+              <div class="qb-gift">
+                {%- if gift.imageUrl != blank -%}
+                  <img
+                    class="qb-gift__img"
+                    src="{{ gift.imageUrl }}"
+                    alt=""
+                    width="28"
+                    height="28"
+                    loading="lazy"
+                  >
+                {%- endif -%}
+                <span class="qb-gift__label">+ FREE {% if gift_qty > 1 %}{{ gift_qty }}× {% endif %}{{ gift.title }}</span>
+                {%- if gift.price > 0 -%}
+                  {%- assign gift_cents = gift.price | times: gift_qty | times: 100 | round -%}
+                  <span class="qb-gift__price">{{ gift_cents | money }}</span>
+                {%- endif -%}
+                <span class="qb-gift__free">{{ 0 | money }}</span>
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
         {%- if per_item_variants -%}
           {%- comment -%}
             Per-item variant pickers for this tier. Grouped by product option

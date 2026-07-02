@@ -310,14 +310,28 @@
   color: var(--qb-subtitle, #6b7280);
 }
 
-/* Free gift lines, shown inside the tier's border. */
+/* Free gift lines, shown as a panel that connects to the bar's bottom edge. */
 .qb-gifts {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   background: var(--qb-gift-bg, #f0fdf4);
-  border-radius: 8px;
+  border: 2px solid var(--qb-border, #e3e3e3);
+  border-top: none;
+  border-radius: 0 0 var(--qb-tier-radius, 12px) var(--qb-tier-radius, 12px);
+}
+
+/* Square the bar's bottom corners so the gift panel joins seamlessly, and
+   match the panel's border to the bar's state (accent when selected/highlight). */
+.qb-tier-wrap:has(.qb-gifts) .qb-tier {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.qb-tier-wrap:has(.qb-tier--selected) .qb-gifts,
+.qb-tier-wrap:has(.qb-tier--highlight) .qb-gifts {
+  border-color: var(--qb-accent, #3b5bfd);
 }
 
 .qb-gift {

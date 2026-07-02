@@ -1822,13 +1822,19 @@ function WidgetPreview({
             : `${tier.quantity} pcs.`;
           const selected = index === selectedIndex;
           const accented = selected || tier.highlight;
+          const hasGifts = (tier.gifts ?? []).length > 0;
           return (
             <div
               key={index}
+              style={{ display: "flex", flexDirection: "column" }}
+            >
+            <div
               style={{
                 position: "relative",
                 border: `2px solid ${accented ? theme.accentColor : theme.borderColor}`,
-                borderRadius: theme.tierRadius,
+                borderRadius: hasGifts
+                  ? `${theme.tierRadius}px ${theme.tierRadius}px 0 0`
+                  : theme.tierRadius,
                 padding: "12px 14px",
                 display: "flex",
                 flexDirection: "column",
@@ -1939,15 +1945,18 @@ function WidgetPreview({
                   values={previewValues}
                 />
               )}
-              {(tier.gifts ?? []).length > 0 && (
+            </div>
+              {hasGifts && (
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
                     gap: 6,
                     background: theme.giftBgColor,
-                    borderRadius: 8,
-                    padding: "8px 10px",
+                    border: `2px solid ${accented ? theme.accentColor : theme.borderColor}`,
+                    borderTop: "none",
+                    borderRadius: `0 0 ${theme.tierRadius}px ${theme.tierRadius}px`,
+                    padding: "10px 12px",
                   }}
                 >
                   {(tier.gifts ?? []).map((gift, gi) => (
