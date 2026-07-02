@@ -59,6 +59,9 @@
       --qb-subtitle: {{ theme.subtitleColor | default: '#6b7280' }};
       --qb-price: {{ theme.priceColor | default: '#1a1a1a' }};
       --qb-compare: {{ theme.compareAtColor | default: '#9ca3af' }};
+      --qb-gift-bg: {{ theme.giftBgColor | default: '#f0fdf4' }};
+      --qb-gift-label: {{ theme.giftLabelColor | default: '#15803d' }};
+      --qb-gift-price: {{ theme.giftPriceColor | default: '#9ca3af' }};
       --qb-font-family: {{ theme.fontFamily | default: 'inherit' }};
       --qb-font-size: {{ theme.fontSize | default: 14 }}px;
       --qb-tier-radius: {{ theme.tierRadius | default: 12 }}px;
@@ -160,7 +163,7 @@
           data-qb-get="{{ get_qty }}"
           data-qb-discount-type="{{ tier.discountType }}"
           data-qb-discount-value="{{ tier.discountValue }}"
-          data-qb-gift-variants="{% for gift in tier.gifts %}{{ gift.variantId | split: '/' | last }}{% unless forloop.last %},{% endunless %}{% endfor %}"
+          data-qb-gifts="{% for gift in tier.gifts %}{{ gift.variantId | split: '/' | last }}:{{ gift.quantity | default: 1 }}{% unless forloop.last %},{% endunless %}{% endfor %}"
         >
           {%- if tier.badgeText != blank -%}
             <span class="qb-badge">{{ tier.badgeText }}</span>
@@ -217,6 +220,7 @@
         {%- if tier.gifts and tier.gifts.size > 0 -%}
           <div class="qb-gifts">
             {%- for gift in tier.gifts -%}
+              {%- assign gift_qty = gift.quantity | default: 1 -%}
               <div class="qb-gift">
                 {%- if gift.imageUrl != blank -%}
                   <img
@@ -228,9 +232,9 @@
                     loading="lazy"
                   >
                 {%- endif -%}
-                <span class="qb-gift__label">+ FREE {{ gift.title }}</span>
+                <span class="qb-gift__label">+ FREE {% if gift_qty > 1 %}{{ gift_qty }}× {% endif %}{{ gift.title }}</span>
                 {%- if gift.price > 0 -%}
-                  {%- assign gift_cents = gift.price | times: 100 | round -%}
+                  {%- assign gift_cents = gift.price | times: gift_qty | times: 100 | round -%}
                   <span class="qb-gift__price">{{ gift_cents | money }}</span>
                 {%- endif -%}
               </div>

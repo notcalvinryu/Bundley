@@ -93,6 +93,9 @@ export type ThemeColors = {
   subtitleColor: string;
   priceColor: string;
   compareAtColor: string;
+  giftBgColor: string; // background of the free-gift section
+  giftLabelColor: string; // "+ FREE ..." text
+  giftPriceColor: string; // struck-through gift price
 };
 
 // Which products an offer targets. Only SPECIFIC is enforced today (one product
@@ -200,6 +203,9 @@ export const DEFAULT_THEME: WidgetTheme = {
   subtitleColor: "#6b7280",
   priceColor: "#1a1a1a",
   compareAtColor: "#9ca3af",
+  giftBgColor: "#f0fdf4",
+  giftLabelColor: "#15803d",
+  giftPriceColor: "#9ca3af",
   fontFamily: "inherit",
   fontSize: 14,
   tierRadius: 12,
@@ -249,6 +255,9 @@ export const THEME_FIELDS: { key: keyof ThemeColors; label: string }[] = [
   { key: "subtitleColor", label: "Subtitle / savings" },
   { key: "priceColor", label: "Price" },
   { key: "compareAtColor", label: "Compare-at price" },
+  { key: "giftBgColor", label: "Gift background" },
+  { key: "giftLabelColor", label: "Gift text" },
+  { key: "giftPriceColor", label: "Gift price" },
 ];
 
 // Merge a possibly-partial/untrusted theme over the defaults so every key is
@@ -368,6 +377,7 @@ export type Gift = {
   variantId: string; // Shopify variant GID — what's added to the cart / discounted
   title: string; // product/variant title shown as "+ FREE <title>"
   price: number; // regular price, shown struck-through
+  quantity: number; // how many of this gift are given free (>= 1)
   imageUrl: string | null;
 };
 
@@ -582,6 +592,10 @@ export function sanitizeGifts(gifts: unknown): Gift[] {
       variantId: String(g.variantId ?? ""),
       title: String(g.title ?? "Free gift"),
       price: typeof g.price === "number" && g.price >= 0 ? g.price : 0,
+      quantity:
+        typeof g.quantity === "number" && g.quantity >= 1
+          ? Math.floor(g.quantity)
+          : 1,
       imageUrl: g.imageUrl ? String(g.imageUrl) : null,
     }))
     .filter((g) => g.variantId);

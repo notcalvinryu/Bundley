@@ -438,6 +438,7 @@ export default function OfferEditor() {
         variantId: String(variant?.id ?? product.id),
         title: String(product.title ?? "Free gift"),
         price: variant?.price != null ? Number(variant.price) : 0,
+        quantity: 1,
         imageUrl: product.images?.[0]?.originalSrc ?? null,
       };
       setTiers((current) =>
@@ -448,6 +449,24 @@ export default function OfferEditor() {
     },
     [shopify],
   );
+
+  const updateGift = (
+    tierIndex: number,
+    giftIndex: number,
+    patch: Partial<Gift>,
+  ) =>
+    setTiers((current) =>
+      current.map((t, i) =>
+        i === tierIndex
+          ? {
+              ...t,
+              gifts: (t.gifts ?? []).map((g, gi) =>
+                gi === giftIndex ? { ...g, ...patch } : g,
+              ),
+            }
+          : t,
+      ),
+    );
 
   const removeGift = (tierIndex: number, giftIndex: number) =>
     setTiers((current) =>
@@ -1157,13 +1176,31 @@ export default function OfferEditor() {
                                 </Text>
                               </Text>
                             </InlineStack>
-                            <Button
-                              variant="plain"
-                              tone="critical"
-                              onClick={() => removeGift(index, gi)}
-                            >
-                              Remove
-                            </Button>
+                            <InlineStack gap="200" blockAlign="center">
+                              <Box width="88px">
+                                <TextField
+                                  label="Qty"
+                                  labelHidden
+                                  type="number"
+                                  min={1}
+                                  autoComplete="off"
+                                  prefix="×"
+                                  value={String(gift.quantity ?? 1)}
+                                  onChange={(v) =>
+                                    updateGift(index, gi, {
+                                      quantity: Math.max(1, Number(v) || 1),
+                                    })
+                                  }
+                                />
+                              </Box>
+                              <Button
+                                variant="plain"
+                                tone="critical"
+                                onClick={() => removeGift(index, gi)}
+                              >
+                                Remove
+                              </Button>
+                            </InlineStack>
                           </InlineStack>
                         ))}
                         <div>
@@ -1908,8 +1945,9 @@ function WidgetPreview({
                     display: "flex",
                     flexDirection: "column",
                     gap: 6,
-                    borderTop: `1px solid ${theme.borderColor}`,
-                    paddingTop: 8,
+                    background: theme.giftBgColor,
+                    borderRadius: 8,
+                    padding: "8px 10px",
                   }}
                 >
                   {(tier.gifts ?? []).map((gift, gi) => (
@@ -1936,19 +1974,20 @@ function WidgetPreview({
                         />
                       )}
                       <span
-                        style={{ fontWeight: 600, color: theme.labelColor }}
+                        style={{ fontWeight: 600, color: theme.giftLabelColor }}
                       >
-                        + FREE {gift.title}
+                        + FREE {(gift.quantity ?? 1) > 1 ? `${gift.quantity}× ` : ""}
+                        {gift.title}
                       </span>
                       {gift.price > 0 && (
                         <span
                           style={{
                             marginLeft: "auto",
-                            color: theme.compareAtColor,
+                            color: theme.giftPriceColor,
                             textDecoration: "line-through",
                           }}
                         >
-                          ${gift.price.toFixed(2)}
+                          ${(gift.price * (gift.quantity ?? 1)).toFixed(2)}
                         </span>
                       )}
                     </div>

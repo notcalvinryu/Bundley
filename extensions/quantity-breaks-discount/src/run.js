@@ -199,7 +199,8 @@ export function run(input) {
   }
 
   const discounts = [];
-  const freeGiftVariantIds = new Set();
+  /** @type {Map<string, number>} variant id -> granted free quantity */
+  const freeGiftQty = new Map();
   for (const { config, total, lines } of groups.values()) {
     if (!lines.length) continue;
     const targets = lines.map((l) => ({ cartLine: { id: l.id } }));
@@ -209,23 +210,30 @@ export function run(input) {
         : quantityBreakDiscount(config, total, targets);
     if (discount) discounts.push(discount);
 
-    // Gifts granted "at/above" any tier whose quantity the total meets.
+    // Gifts granted "at/above" any tier whose quantity the total meets; keep the
+    // highest granted quantity per variant.
     for (const tier of config.tiers || []) {
       if (typeof tier.quantity === "number" && total >= tier.quantity) {
         for (const gift of tier.gifts || []) {
-          if (gift && gift.variantId) freeGiftVariantIds.add(gift.variantId);
+          if (!gift || !gift.variantId) continue;
+          const qty = typeof gift.quantity === "number" ? gift.quantity : 1;
+          freeGiftQty.set(
+            gift.variantId,
+            Math.max(freeGiftQty.get(gift.variantId) || 0, qty),
+          );
         }
       }
     }
   }
 
-  // Make one unit of each granted gift free.
-  if (freeGiftVariantIds.size > 0) {
+  // Make the granted quantity of each gift free.
+  if (freeGiftQty.size > 0) {
     for (const { lineId, variantId } of allLines) {
-      if (freeGiftVariantIds.has(variantId)) {
+      const qty = freeGiftQty.get(variantId);
+      if (qty) {
         discounts.push({
           message: "Free gift",
-          targets: [{ cartLine: { id: lineId, quantity: 1 } }],
+          targets: [{ cartLine: { id: lineId, quantity: qty } }],
           value: { percentage: { value: "100" } },
         });
       }

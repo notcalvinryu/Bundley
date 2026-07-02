@@ -406,22 +406,28 @@
     var variants = parseVariants(widget);
 
     // Free gifts for the selected tier: every gift on that tier and on any
-    // lower tier (granted "at/above" its quantity), one of each, deduped.
+    // lower tier (granted "at/above" its quantity), keyed by variant with the
+    // highest granted quantity.
     function giftItems(selectedLabel) {
       var selQty = parseInt(selectedLabel.getAttribute("data-qty"), 10) || 0;
-      var ids = {};
+      var byId = {};
       tiers.forEach(function (t) {
         var tq = parseInt(t.getAttribute("data-qty"), 10) || 0;
         if (tq > selQty) return;
-        (t.getAttribute("data-qb-gift-variants") || "")
-          .split(",")
-          .forEach(function (id) {
-            id = id.trim();
-            if (id) ids[id] = true;
-          });
+        (t.getAttribute("data-qb-gifts") || "").split(",").forEach(function (
+          pair,
+        ) {
+          pair = pair.trim();
+          if (!pair) return;
+          var parts = pair.split(":");
+          var id = parts[0];
+          var qty = parseInt(parts[1], 10) || 1;
+          if (!id) return;
+          byId[id] = Math.max(byId[id] || 0, qty);
+        });
       });
-      return Object.keys(ids).map(function (id) {
-        return { id: Number(id), quantity: 1 };
+      return Object.keys(byId).map(function (id) {
+        return { id: Number(id), quantity: byId[id] };
       });
     }
 
