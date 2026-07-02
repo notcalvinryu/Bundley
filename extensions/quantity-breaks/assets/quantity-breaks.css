@@ -334,6 +334,21 @@
   border-color: var(--qb-accent, #3b5bfd);
 }
 
+/* When a tier has both, the per-item variant panel sits directly under the bar
+   (the "second box") and the gift panel below it — all joined. */
+.qb-tier__variants {
+  order: 1;
+}
+
+.qb-gifts {
+  order: 2;
+}
+
+.qb-tier-wrap:has(.qb-gifts) .qb-tier__variants {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 .qb-gift {
   display: flex;
   align-items: center;
