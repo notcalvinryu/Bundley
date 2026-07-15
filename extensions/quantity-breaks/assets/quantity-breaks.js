@@ -1,5 +1,33 @@
 (function () {
 
+  // Hide the theme's native variant selector, theme-agnostically: Shopify
+  // option controls share standard signals across theme generations — inputs
+  // named `options[...]`, `.single-option-selector` (vintage), and the OS 2.0
+  // <variant-selects>/<variant-radios> custom elements. We hide each control's
+  // nearest sensible wrapper. Runs only when the merchant enabled the setting.
+  function hideThemeVariantPicker() {
+    var controls = document.querySelectorAll(
+      '[name^="options["], [name="id"] ~ .single-option-selector,' +
+        " .single-option-selector, variant-selects, variant-radios," +
+        " [data-option-index], .product-form__input--pill," +
+        " .product-form__input--dropdown, .product-form__input--swatch",
+    );
+    Array.prototype.forEach.call(controls, function (el) {
+      // <variant-selects>/<variant-radios> are the picker themselves; other
+      // controls sit inside a labelled wrapper we want to remove whole.
+      var tag = el.tagName.toLowerCase();
+      var wrap =
+        tag === "variant-selects" || tag === "variant-radios"
+          ? el
+          : el.closest(
+              "fieldset, .product-form__input, .selector-wrapper," +
+                " .variant-input-wrap, .product-form__variants," +
+                " .product-options, .product-option, [data-product-option]",
+            ) || el;
+      wrap.style.setProperty("display", "none", "important");
+    });
+  }
+
   // --- Add to cart -------------------------------------------------------
   // The widget owns no button; instead it intercepts the theme's Add to cart
   // and performs the add itself with the selected tier's quantity (and, later,
@@ -509,6 +537,13 @@
     // embed is enabled — otherwise the theme is untouched.
     document.documentElement.classList.add("qb-app-enabled");
     document.querySelectorAll("[data-qb-widget]").forEach(initWidget);
+    if (document.querySelector("[data-qb-hide-theme-variants]")) {
+      hideThemeVariantPicker();
+      // Themes that re-render the product form (variant swaps) can restore it;
+      // re-hide shortly after and on the next frame to cover late renders.
+      setTimeout(hideThemeVariantPicker, 300);
+      setTimeout(hideThemeVariantPicker, 1200);
+    }
   }
 
   if (document.readyState === "loading") {

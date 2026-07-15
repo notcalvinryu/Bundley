@@ -57,6 +57,7 @@
   <div
     class="qb-widget"
     data-qb-widget
+    {% if theme.hideThemeVariantPicker %}data-qb-hide-theme-variants{% endif %}
     data-variant-id="{{ variant_id }}"
     data-qb-show-compare="{% if theme.showCompareAt == false %}0{% else %}1{% endif %}"
     style="
