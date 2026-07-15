@@ -297,12 +297,13 @@
                           {%- unless theme.hideUnavailableVariants and value_available == false -%}
                             {%- assign is_sel = false -%}
                             {%- if value == sel_value -%}{%- assign is_sel = true -%}{%- endif -%}
+                            {%- assign swatch_bg = theme.swatchColors[value] | default: value | downcase | remove: ' ' -%}
                             <button
                               type="button"
                               class="qb-swatch qb-swatch--{{ picker_type }}{% if is_sel %} qb-swatch--selected{% endif %}{% unless value_available %} qb-swatch--soldout{% endunless %}"
                               data-qb-swatch
                               data-qb-value="{{ value | escape }}"
-                              {% if picker_type == 'color' %}style="background: {{ value | downcase | remove: ' ' | escape }};"{% endif %}
+                              {% if picker_type == 'color' %}style="background: {{ swatch_bg | escape }};"{% endif %}
                               aria-label="{{ option.name | escape }}: {{ value | escape }}"
                               aria-pressed="{% if is_sel %}true{% else %}false{% endif %}"
                               title="{{ value | escape }}"
@@ -356,11 +357,18 @@
     <style>
       .qb-app-enabled variant-selects,
       .qb-app-enabled variant-radios,
+      .qb-app-enabled .product-form__input,
       .qb-app-enabled .product-form__input--pill,
       .qb-app-enabled .product-form__input--dropdown,
       .qb-app-enabled .product-form__input--swatch,
       .qb-app-enabled .single-option-selector,
-      .qb-app-enabled .product-form__input.product-form__input--pill {
+      .qb-app-enabled .selector-wrapper,
+      .qb-app-enabled .variant-picker,
+      .qb-app-enabled .product-options,
+      .qb-app-enabled .product-form__variants,
+      .qb-app-enabled .variant-input-wrap,
+      .qb-app-enabled fieldset[name^="options"],
+      .qb-app-enabled [data-product-option] {
         display: none !important;
       }
     </style>

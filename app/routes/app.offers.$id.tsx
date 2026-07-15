@@ -320,6 +320,9 @@ export default function OfferEditor() {
     useState<VariantPickerType>("dropdown");
   const [draftSwatchSize, setDraftSwatchSize] = useState(36);
   const [draftOption, setDraftOption] = useState("");
+  const [draftSwatchColors, setDraftSwatchColors] = useState<
+    Record<string, string>
+  >({});
   // Indices of collapsed tier bars (a tier is expanded unless listed here).
   const [collapsedTiers, setCollapsedTiers] = useState<number[]>([]);
   const isTierOpen = (index: number) => !collapsedTiers.includes(index);
@@ -363,6 +366,7 @@ export default function OfferEditor() {
     setDraftPickerType(theme.variantPickerType);
     setDraftSwatchSize(theme.swatchSize);
     setDraftOption(productOptions[0]?.name ?? "");
+    setDraftSwatchColors({ ...theme.swatchColors });
     setSwatchModalOpen(true);
   };
   const applySwatchModal = () => {
@@ -370,6 +374,7 @@ export default function OfferEditor() {
       ...current,
       variantPickerType: draftPickerType,
       swatchSize: draftSwatchSize,
+      swatchColors: draftSwatchColors,
     }));
     setSwatchModalOpen(false);
   };
@@ -1520,6 +1525,44 @@ export default function OfferEditor() {
                   }
                 />
               )}
+              {draftPickerType === "color" && swatchValues.length > 0 && (
+                <BlockStack gap="200">
+                  <Text as="span" variant="headingSm">
+                    Colors for {swatchOptionName}
+                  </Text>
+                  {swatchValues.map((val) => (
+                    <InlineStack
+                      key={val}
+                      align="space-between"
+                      blockAlign="center"
+                    >
+                      <Text as="span" variant="bodyMd">
+                        {val}
+                      </Text>
+                      <input
+                        type="color"
+                        aria-label={`Color for ${val}`}
+                        value={draftSwatchColors[val] || "#cccccc"}
+                        onChange={(e) =>
+                          setDraftSwatchColors((c) => ({
+                            ...c,
+                            [val]: e.target.value,
+                          }))
+                        }
+                        style={{
+                          width: 44,
+                          height: 30,
+                          padding: 0,
+                          border: "1px solid #ccc",
+                          borderRadius: 6,
+                          background: "none",
+                          cursor: "pointer",
+                        }}
+                      />
+                    </InlineStack>
+                  ))}
+                </BlockStack>
+              )}
             </BlockStack>
           </Box>
           <Box minWidth="280px">
@@ -1533,6 +1576,7 @@ export default function OfferEditor() {
                 swatchSize={draftSwatchSize}
                 optionName={swatchOptionName}
                 values={swatchValues}
+                colors={draftSwatchColors}
               />
             </BlockStack>
           </Box>
@@ -1566,6 +1610,7 @@ function VariantPickerMock({
   units,
   optionName,
   values,
+  colors,
 }: {
   theme: WidgetTheme;
   pickerType: VariantPickerType;
@@ -1573,8 +1618,10 @@ function VariantPickerMock({
   units: number;
   optionName: string;
   values: string[];
+  colors?: Record<string, string>;
 }) {
   const vals = values.length > 0 ? values : SAMPLE_VALUES;
+  const swatchColor = (v: string) => colors?.[v] || colorFor(v);
   return (
     <div
       style={{
@@ -1639,7 +1686,7 @@ function VariantPickerMock({
                       width: swatchSize,
                       height: swatchSize,
                       borderRadius: "50%",
-                      background: colorFor(v),
+                      background: swatchColor(v),
                       boxShadow:
                         i === 0
                           ? `0 0 0 2px #fff, 0 0 0 4px ${theme.accentColor}`
@@ -1686,12 +1733,14 @@ function SwatchPreview({
   swatchSize,
   optionName,
   values,
+  colors,
 }: {
   theme: WidgetTheme;
   pickerType: VariantPickerType;
   swatchSize: number;
   optionName: string;
   values: string[];
+  colors?: Record<string, string>;
 }) {
   return (
     <div
@@ -1723,6 +1772,7 @@ function SwatchPreview({
         units={2}
         optionName={optionName}
         values={values}
+        colors={colors}
       />
     </div>
   );
@@ -1964,6 +2014,7 @@ function WidgetPreview({
                   }
                   optionName={previewOptionName}
                   values={previewValues}
+                  colors={theme.swatchColors}
                 />
               )}
             </div>

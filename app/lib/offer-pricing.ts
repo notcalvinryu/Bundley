@@ -148,6 +148,7 @@ export type WidgetTheme = ThemeColors & {
   hideOtherProductsOnVariant: boolean; // [staged] hide other products once a variant is picked
   variantPickerType: VariantPickerType; // how the per-item pickers render (dropdown/color/button)
   swatchSize: number; // swatch size in px (used by color/button picker types)
+  swatchColors: Record<string, string>; // option value -> hex color for color swatches
 
   // --- Visibility (staged) ---
   visibilityScope: VisibilityScope;
@@ -222,6 +223,7 @@ export const DEFAULT_THEME: WidgetTheme = {
   hideOtherProductsOnVariant: false,
   variantPickerType: "dropdown",
   swatchSize: 36,
+  swatchColors: {},
   visibilityScope: "SPECIFIC",
   excludeB2B: false,
   widgetOnly: false,
@@ -313,6 +315,13 @@ export function normalizeTheme(partial?: Partial<WidgetTheme> | null): WidgetThe
       result.variantPickerType = partial.variantPickerType as VariantPickerType;
     if (typeof partial.swatchSize === "number" && partial.swatchSize > 0)
       result.swatchSize = partial.swatchSize;
+    if (partial.swatchColors && typeof partial.swatchColors === "object") {
+      const colors: Record<string, string> = {};
+      for (const [k, v] of Object.entries(partial.swatchColors)) {
+        if (typeof v === "string" && v.trim()) colors[k] = v;
+      }
+      result.swatchColors = colors;
+    }
 
     if (typeof partial.discountName === "string")
       result.discountName = partial.discountName;
