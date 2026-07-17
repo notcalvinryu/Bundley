@@ -456,6 +456,7 @@ export default function OfferEditor() {
         title: String(product.title ?? "Free gift"),
         price,
         quantity: 1,
+        perUnit: false,
         imageUrl: product.images?.[0]?.originalSrc ?? null,
       };
       setTiers((current) =>
@@ -1357,6 +1358,13 @@ export default function OfferEditor() {
                                   }
                                 />
                               </Box>
+                              <Checkbox
+                                label="Per item"
+                                checked={gift.perUnit === true}
+                                onChange={(c) =>
+                                  updateGift(index, gi, { perUnit: c })
+                                }
+                              />
                               <Button
                                 variant="plain"
                                 tone="critical"
@@ -2169,7 +2177,13 @@ function WidgetPreview({
                     padding: "10px 12px",
                   }}
                 >
-                  {(tier.gifts ?? []).map((gift, gi) => (
+                  {(tier.gifts ?? []).map((gift, gi) => {
+                    const units = isBxgy
+                      ? tier.quantity + (tier.getQuantity ?? 0)
+                      : tier.quantity;
+                    const giftQty =
+                      (gift.quantity ?? 1) * (gift.perUnit ? units : 1);
+                    return (
                     <div
                       key={gi}
                       style={{
@@ -2195,7 +2209,7 @@ function WidgetPreview({
                       <span
                         style={{ fontWeight: 600, color: theme.giftLabelColor }}
                       >
-                        + FREE {(gift.quantity ?? 1) > 1 ? `${gift.quantity}× ` : ""}
+                        + FREE {giftQty > 1 ? `${giftQty}× ` : ""}
                         {gift.title}
                       </span>
                       <span
@@ -2213,7 +2227,7 @@ function WidgetPreview({
                               textDecoration: "line-through",
                             }}
                           >
-                            ${(gift.price * (gift.quantity ?? 1)).toFixed(2)}
+                            ${(gift.price * giftQty).toFixed(2)}
                           </span>
                         )}
                         <span
@@ -2226,7 +2240,8 @@ function WidgetPreview({
                         </span>
                       </span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

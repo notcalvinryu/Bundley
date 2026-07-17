@@ -176,7 +176,7 @@
           data-qb-get="{{ get_qty }}"
           data-qb-discount-type="{{ tier.discountType }}"
           data-qb-discount-value="{{ tier.discountValue }}"
-          data-qb-gifts="{% for gift in tier.gifts %}{{ gift.variantId | split: '/' | last }}:{{ gift.quantity | default: 1 }}{% unless forloop.last %},{% endunless %}{% endfor %}"
+          data-qb-gifts="{% for gift in tier.gifts %}{% assign gq = gift.quantity | default: 1 %}{% if gift.perUnit %}{% assign gq = gq | times: add_qty %}{% endif %}{{ gift.variantId | split: '/' | last }}:{{ gq }}{% unless forloop.last %},{% endunless %}{% endfor %}"
         >
           {%- if tier.badgeText != blank -%}
             <span class="qb-badge">{{ tier.badgeText }}</span>
@@ -236,6 +236,9 @@
           <div class="qb-gifts">
             {%- for gift in tier.gifts -%}
               {%- assign gift_qty = gift.quantity | default: 1 -%}
+              {%- if gift.perUnit -%}
+                {%- assign gift_qty = gift_qty | times: add_qty -%}
+              {%- endif -%}
               <div class="qb-gift">
                 {%- if gift.imageUrl != blank -%}
                   <img

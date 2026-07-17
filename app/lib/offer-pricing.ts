@@ -387,6 +387,9 @@ export type Gift = {
   title: string; // product/variant title shown as "+ FREE <title>"
   price: number; // regular price, shown struck-through
   quantity: number; // how many of this gift are given free (>= 1)
+  // When true, `quantity` is per purchased unit — buy N of the product and get
+  // N × quantity free (scales without a cap). When false it's a flat count.
+  perUnit: boolean;
   imageUrl: string | null;
 };
 
@@ -642,6 +645,7 @@ export function sanitizeGifts(gifts: unknown): Gift[] {
         typeof g.quantity === "number" && g.quantity >= 1
           ? Math.floor(g.quantity)
           : 1,
+      perUnit: g.perUnit === true,
       imageUrl: g.imageUrl ? String(g.imageUrl) : null,
     }))
     .filter((g) => g.variantId);

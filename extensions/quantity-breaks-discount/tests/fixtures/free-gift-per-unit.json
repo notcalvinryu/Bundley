@@ -1,0 +1,52 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 4,
+            "cost": { "amountPerQuantity": { "amount": "149.99" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "metafield": {
+                  "value": "{\"title\":\"Bag\",\"basePrice\":149.99,\"tiers\":[{\"quantity\":1,\"discountType\":\"NONE\",\"discountValue\":0,\"gifts\":[{\"productId\":\"gid://shopify/Product/9\",\"variantId\":\"gid://shopify/ProductVariant/99\",\"title\":\"Vacuum Air Pump\",\"price\":49.99,\"quantity\":1,\"perUnit\":true}]}]}"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 4,
+            "cost": { "amountPerQuantity": { "amount": "49.99" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/99",
+              "product": {
+                "id": "gid://shopify/Product/9",
+                "metafield": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "ALL",
+      "discounts": [
+        {
+          "message": "Free gift",
+          "targets": [
+            { "cartLine": { "id": "gid://shopify/CartLine/2", "quantity": 4 } }
+          ],
+          "value": { "percentage": { "value": "100" } }
+        }
+      ]
+    }
+  }
+}

@@ -211,12 +211,14 @@ export function run(input) {
     if (discount) discounts.push(discount);
 
     // Gifts granted "at/above" any tier whose quantity the total meets; keep the
-    // highest granted quantity per variant.
+    // highest granted quantity per variant. `perUnit` gifts scale with how many
+    // of the product are in the cart (buy N, get N free — no cap).
     for (const tier of config.tiers || []) {
       if (typeof tier.quantity === "number" && total >= tier.quantity) {
         for (const gift of tier.gifts || []) {
           if (!gift || !gift.variantId) continue;
-          const qty = typeof gift.quantity === "number" ? gift.quantity : 1;
+          const per = typeof gift.quantity === "number" ? gift.quantity : 1;
+          const qty = gift.perUnit === true ? per * total : per;
           freeGiftQty.set(
             gift.variantId,
             Math.max(freeGiftQty.get(gift.variantId) || 0, qty),
