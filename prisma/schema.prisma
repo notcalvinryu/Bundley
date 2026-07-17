@@ -72,6 +72,7 @@ model Tier {
   highlight     Boolean @default(false) // visually emphasize this tier
   position      Int     @default(0)
   gifts         String? // JSON array of free gifts granted at/above this tier
+  bundleItems   String? // JSON array of products forming a "complete the bundle" break
 
   @@index([offerId])
 }

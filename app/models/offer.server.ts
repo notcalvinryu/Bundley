@@ -5,6 +5,7 @@ import {
   normalizeTheme,
   normalizeOfferType,
   sanitizeGifts,
+  sanitizeBundleItems,
   type OfferInput,
 } from "../lib/offer-pricing";
 
@@ -50,6 +51,7 @@ function tierCreateData(input: OfferInput) {
     highlight: tier.highlight,
     position: index,
     gifts: JSON.stringify(sanitizeGifts(tier.gifts)),
+    bundleItems: JSON.stringify(sanitizeBundleItems(tier.bundleItems)),
   }));
 }
 
@@ -156,6 +158,15 @@ export async function syncOfferToMetafield(
 
   await ensureMetafieldDefinition(admin);
 
+  // The widget renders wherever the config lives, so write it to the offer's
+  // product AND to every product included in a "complete the bundle" break.
+  const bundleProductIds = offer.tiers.flatMap((tier) =>
+    sanitizeBundleItems(tier.bundleItems ? JSON.parse(tier.bundleItems) : [])
+      .map((item) => item.productId)
+      .filter(Boolean),
+  );
+  const targets = Array.from(new Set([offer.productId, ...bundleProductIds]));
+
   if (offer.status !== "ACTIVE") {
     await admin(
       `#graphql
@@ -166,13 +177,11 @@ export async function syncOfferToMetafield(
       }`,
       {
         variables: {
-          metafields: [
-            {
-              ownerId: offer.productId,
-              namespace: METAFIELD_NAMESPACE,
-              key: METAFIELD_KEY,
-            },
-          ],
+          metafields: targets.map((ownerId) => ({
+            ownerId,
+            namespace: METAFIELD_NAMESPACE,
+            key: METAFIELD_KEY,
+          })),
         },
       },
     );
@@ -202,6 +211,9 @@ export async function syncOfferToMetafield(
         badgeText: tier.badgeText,
         highlight: tier.highlight,
         gifts: sanitizeGifts(tier.gifts ? JSON.parse(tier.gifts) : []),
+        bundleItems: sanitizeBundleItems(
+          tier.bundleItems ? JSON.parse(tier.bundleItems) : [],
+        ),
       })),
     }),
   );
@@ -216,15 +228,13 @@ export async function syncOfferToMetafield(
     }`,
     {
       variables: {
-        metafields: [
-          {
-            ownerId: offer.productId,
-            namespace: METAFIELD_NAMESPACE,
-            key: METAFIELD_KEY,
-            type: "json",
-            value,
-          },
-        ],
+        metafields: targets.map((ownerId) => ({
+          ownerId,
+          namespace: METAFIELD_NAMESPACE,
+          key: METAFIELD_KEY,
+          type: "json",
+          value,
+        })),
       },
     },
   );

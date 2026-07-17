@@ -390,6 +390,19 @@ export type Gift = {
   imageUrl: string | null;
 };
 
+// One product inside a "Complete the bundle" break. The storefront reads the
+// live product (price, variants, image) via `all_products[handle]`, so only the
+// identity + quantity need to travel in the metafield; the snapshot fields are
+// for the admin list/preview.
+export type BundleItem = {
+  productId: string; // Shopify product GID (admin picker)
+  handle: string; // product handle — how the storefront looks it up live
+  title: string;
+  price: number; // snapshot, for the admin list
+  imageUrl: string | null;
+  quantity: number; // how many of this product the bundle includes (>= 1)
+};
+
 export type TierInput = {
   quantity: number; // BXGY: the "buy" (X) quantity
   getQuantity?: number | null; // BXGY: the "get" (Y) quantity; null for quantity breaks
@@ -400,6 +413,9 @@ export type TierInput = {
   badgeText?: string | null;
   highlight: boolean;
   gifts?: Gift[]; // free gifts granted at/above this tier's quantity
+  // "Complete the bundle" break: when set, this break is a multi-product bundle
+  // discounted by `discountValue`% instead of N units of the offer's product.
+  bundleItems?: BundleItem[];
 };
 
 export type OfferInput = {
@@ -588,8 +604,29 @@ export type OfferMetafield = {
     badgeText: string | null;
     highlight: boolean;
     gifts: Gift[];
+    bundleItems: BundleItem[];
   }[];
 };
+
+// Keep only well-formed bundle items (need a handle to look the product up
+// live on the storefront).
+export function sanitizeBundleItems(items: unknown): BundleItem[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((i) => i && typeof i === "object")
+    .map((i: any) => ({
+      productId: String(i.productId ?? ""),
+      handle: String(i.handle ?? ""),
+      title: String(i.title ?? ""),
+      price: typeof i.price === "number" && i.price >= 0 ? i.price : 0,
+      imageUrl: i.imageUrl ? String(i.imageUrl) : null,
+      quantity:
+        typeof i.quantity === "number" && i.quantity >= 1
+          ? Math.floor(i.quantity)
+          : 1,
+    }))
+    .filter((i) => i.handle);
+}
 
 // Keep only well-formed gifts (a valid variant id + numeric price).
 export function sanitizeGifts(gifts: unknown): Gift[] {
@@ -630,6 +667,7 @@ export function toMetafield(input: OfferInput): OfferMetafield {
         badgeText: tier.badgeText ?? null,
         highlight: tier.highlight,
         gifts: sanitizeGifts(tier.gifts),
+        bundleItems: sanitizeBundleItems(tier.bundleItems),
       })),
   };
 }

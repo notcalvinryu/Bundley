@@ -55,7 +55,9 @@ import {
   normalizeOfferType,
   isOfferTypeAvailable,
   sanitizeGifts,
+  sanitizeBundleItems,
   type Gift,
+  type BundleItem,
   type VariantPickerType,
   type OfferInput,
   type OfferStatus,
@@ -343,6 +345,9 @@ export default function OfferEditor() {
       badgeText: tier.badgeText,
       highlight: tier.highlight,
       gifts: sanitizeGifts(tier.gifts ? JSON.parse(tier.gifts) : []),
+      bundleItems: sanitizeBundleItems(
+        tier.bundleItems ? JSON.parse(tier.bundleItems) : [],
+      ),
     })) ?? (isBxgy ? defaultBxgyTiers() : defaultTiers()),
   );
   const [theme, setTheme] = useState<WidgetTheme>(() => {
@@ -474,6 +479,73 @@ export default function OfferEditor() {
               ...t,
               gifts: (t.gifts ?? []).map((g, gi) =>
                 gi === giftIndex ? { ...g, ...patch } : g,
+              ),
+            }
+          : t,
+      ),
+    );
+
+  // Pick a product to include in this break's "complete the bundle" set.
+  const addBundleItem = useCallback(
+    async (tierIndex: number) => {
+      const selection = await shopify.resourcePicker({
+        type: "product",
+        multiple: false,
+      });
+      if (!selection || selection.length === 0) return;
+      const product: any = selection[0];
+      const variant = product.variants?.[0];
+      const rawPrice = variant?.price;
+      let price = 0;
+      if (typeof rawPrice === "number") price = rawPrice;
+      else if (typeof rawPrice === "string") price = Number(rawPrice) || 0;
+      else if (rawPrice && typeof rawPrice === "object")
+        price = Number(rawPrice.amount ?? 0) || 0;
+      const item: BundleItem = {
+        productId: String(product.id),
+        handle: String(product.handle ?? ""),
+        title: String(product.title ?? ""),
+        price,
+        imageUrl: product.images?.[0]?.originalSrc ?? null,
+        quantity: 1,
+      };
+      setTiers((current) =>
+        current.map((t, i) =>
+          i === tierIndex
+            ? { ...t, bundleItems: [...(t.bundleItems ?? []), item] }
+            : t,
+        ),
+      );
+    },
+    [shopify],
+  );
+
+  const updateBundleItem = (
+    tierIndex: number,
+    itemIndex: number,
+    patch: Partial<BundleItem>,
+  ) =>
+    setTiers((current) =>
+      current.map((t, i) =>
+        i === tierIndex
+          ? {
+              ...t,
+              bundleItems: (t.bundleItems ?? []).map((b, bi) =>
+                bi === itemIndex ? { ...b, ...patch } : b,
+              ),
+            }
+          : t,
+      ),
+    );
+
+  const removeBundleItem = (tierIndex: number, itemIndex: number) =>
+    setTiers((current) =>
+      current.map((t, i) =>
+        i === tierIndex
+          ? {
+              ...t,
+              bundleItems: (t.bundleItems ?? []).filter(
+                (_, bi) => bi !== itemIndex,
               ),
             }
           : t,
@@ -1157,6 +1229,72 @@ export default function OfferEditor() {
                           Remove
                         </Button>
                       </InlineStack>
+                      <Divider />
+                      <BlockStack gap="200">
+                        <Text as="span" variant="headingSm">
+                          Bundle products
+                        </Text>
+                        <Text as="p" tone="subdued" variant="bodySm">
+                          Add products to make this break a “complete the
+                          bundle” — they’re added together and discounted by
+                          this break’s percentage. Leave empty for a normal
+                          quantity break.
+                        </Text>
+                        {(tier.bundleItems ?? []).map((item, bi) => (
+                          <InlineStack
+                            key={bi}
+                            align="space-between"
+                            blockAlign="center"
+                            gap="200"
+                          >
+                            <InlineStack gap="200" blockAlign="center">
+                              {item.imageUrl && (
+                                <Thumbnail
+                                  source={item.imageUrl}
+                                  alt={item.title}
+                                  size="small"
+                                />
+                              )}
+                              <Text as="span" variant="bodyMd">
+                                {item.title}{" "}
+                                <Text as="span" tone="subdued">
+                                  (${item.price.toFixed(2)})
+                                </Text>
+                              </Text>
+                            </InlineStack>
+                            <InlineStack gap="200" blockAlign="center">
+                              <Box width="80px">
+                                <TextField
+                                  label="Qty"
+                                  labelHidden
+                                  type="number"
+                                  min={1}
+                                  autoComplete="off"
+                                  prefix="×"
+                                  value={String(item.quantity ?? 1)}
+                                  onChange={(v) =>
+                                    updateBundleItem(index, bi, {
+                                      quantity: Math.max(1, Number(v) || 1),
+                                    })
+                                  }
+                                />
+                              </Box>
+                              <Button
+                                variant="plain"
+                                tone="critical"
+                                onClick={() => removeBundleItem(index, bi)}
+                              >
+                                Remove
+                              </Button>
+                            </InlineStack>
+                          </InlineStack>
+                        ))}
+                        <div>
+                          <Button onClick={() => addBundleItem(index)}>
+                            Add bundle product
+                          </Button>
+                        </div>
+                      </BlockStack>
                       <Divider />
                       <BlockStack gap="200">
                         <Text as="span" variant="headingSm">
