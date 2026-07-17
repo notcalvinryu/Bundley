@@ -24,7 +24,7 @@
       }
     },
     "output": {
-      "discountApplicationStrategy": "FIRST",
+      "discountApplicationStrategy": "ALL",
       "discounts": [
         {
           "message": "MOST POPULAR",
