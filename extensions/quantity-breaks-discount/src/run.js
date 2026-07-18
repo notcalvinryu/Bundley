@@ -102,6 +102,109 @@ function bxgyDiscount(config, totalQty, lines) {
   return null;
 }
 
+// Expand lines into individual units and take the cheapest `count` of them,
+// grouped back into per-line quantity targets. Shared by BXGY and bundle
+// discounting, which both need to discount an exact sub-quantity of a line.
+/**
+ * @param {{ id: string, quantity: number, price: number }[]} lines
+ * @param {number} count
+ */
+function unitsToLineTargets(lines, count) {
+  const units = [];
+  for (const line of lines) {
+    for (let i = 0; i < line.quantity; i++) {
+      units.push({ id: line.id, price: line.price });
+    }
+  }
+  units.sort((a, b) => a.price - b.price);
+  const rewarded = units.slice(0, count);
+  const perLine = new Map();
+  for (const u of rewarded) perLine.set(u.id, (perLine.get(u.id) || 0) + 1);
+  /** @type {Target[]} */
+  const targets = [];
+  perLine.forEach((quantity, id) => targets.push({ cartLine: { id, quantity } }));
+  return targets;
+}
+
+// How many complete bundle sets are satisfied: the anchor product's total
+// (in `tier.quantity`-sized chunks) capped by however many sets each bundle
+// item's own cart quantity can supply.
+/**
+ * @param {any} tier
+ * @param {number} anchorTotal
+ * @param {Map<string, { config: any, total: number, lines: any[] }>} groups
+ */
+function bundleSetsCompleted(tier, anchorTotal, groups) {
+  const anchorNeed = Math.max(1, Math.floor(tier.quantity) || 1);
+  let sets = Math.floor(anchorTotal / anchorNeed);
+  for (const item of tier.bundleItems || []) {
+    if (!item || !item.productId) continue;
+    const need = Math.max(1, Math.floor(item.quantity) || 1);
+    const group = groups.get(item.productId);
+    const have = group ? group.total : 0;
+    sets = Math.min(sets, Math.floor(have / need));
+  }
+  return Math.max(0, sets);
+}
+
+/**
+ * "Complete the bundle": the anchor product's tier is discounted together
+ * with every configured bundle item, as one combined percentage/fixed-amount
+ * discount, once every product required by the bundle is present in the
+ * needed quantity.
+ *
+ * @param {any} config
+ * @param {string} anchorProductId
+ * @param {Map<string, { config: any, total: number, lines: any[] }>} groups
+ */
+function bundleDiscount(config, anchorProductId, groups) {
+  const anchorGroup = groups.get(anchorProductId);
+  if (!anchorGroup) return null;
+
+  const tiers = (config.tiers || []).filter(
+    (t) => t && Array.isArray(t.bundleItems) && t.bundleItems.length > 0,
+  );
+
+  for (const tier of tiers) {
+    if (!(tier.discountValue > 0)) continue;
+    const sets = bundleSetsCompleted(tier, anchorGroup.total, groups);
+    if (sets < 1) continue;
+
+    const anchorNeed = Math.max(1, Math.floor(tier.quantity) || 1);
+    const targets = unitsToLineTargets(anchorGroup.lines, anchorNeed * sets);
+    for (const item of tier.bundleItems) {
+      const group = groups.get(item.productId);
+      if (!group) continue;
+      const need = Math.max(1, Math.floor(item.quantity) || 1) * sets;
+      targets.push(...unitsToLineTargets(group.lines, need));
+    }
+    if (targets.length === 0) continue;
+
+    const message =
+      (config.theme && config.theme.discountName) ||
+      tier.badgeText ||
+      "Complete the bundle";
+
+    if (tier.discountType === "PERCENT") {
+      let pct = tier.discountValue;
+      if (pct > 100) pct = 100;
+      return { message, targets, value: { percentage: { value: String(pct) } } };
+    }
+
+    if (tier.discountType === "FIXED_PER_UNIT") {
+      return {
+        message,
+        targets,
+        value: {
+          fixedAmount: { amount: String(tier.discountValue), appliesToEachItem: true },
+        },
+      };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Build the quantity-break discount for a product, from its combined quantity
  * across all of its cart lines, applied to every one of those lines.
@@ -112,7 +215,12 @@ function bxgyDiscount(config, totalQty, lines) {
  */
 function quantityBreakDiscount(config, totalQty, targets) {
   const tiers = (config.tiers || [])
-    .filter((tier) => tier && typeof tier.quantity === "number")
+    .filter(
+      (tier) =>
+        tier &&
+        typeof tier.quantity === "number" &&
+        !(Array.isArray(tier.bundleItems) && tier.bundleItems.length > 0),
+    )
     .sort((a, b) => b.quantity - a.quantity);
 
   // The best tier whose quantity threshold the combined total meets.
@@ -201,8 +309,20 @@ export function run(input) {
   const discounts = [];
   /** @type {Map<string, number>} variant id -> granted free quantity */
   const freeGiftQty = new Map();
-  for (const { config, total, lines } of groups.values()) {
+  for (const [productId, { config, total, lines }] of groups) {
     if (!lines.length) continue;
+
+    // Products that only appear as an *ingredient* of another product's
+    // "complete the bundle" break (every target product gets the same synced
+    // config) don't have independent tiers/gifts of their own — the anchor
+    // group below handles them as part of the combined bundle discount.
+    const isBundleFollower = (config.tiers || []).some(
+      (t) =>
+        Array.isArray(t.bundleItems) &&
+        t.bundleItems.some((item) => item && item.productId === productId),
+    );
+    if (isBundleFollower) continue;
+
     const targets = lines.map((l) => ({ cartLine: { id: l.id } }));
     const discount =
       config.type === "BXGY"
@@ -210,20 +330,29 @@ export function run(input) {
         : quantityBreakDiscount(config, total, targets);
     if (discount) discounts.push(discount);
 
+    const bundleDisc = bundleDiscount(config, productId, groups);
+    if (bundleDisc) discounts.push(bundleDisc);
+
     // Gifts granted "at/above" any tier whose quantity the total meets; keep the
     // highest granted quantity per variant. `perUnit` gifts scale with how many
-    // of the product are in the cart (buy N, get N free — no cap).
+    // of the product are in the cart (buy N, get N free — no cap). A "complete
+    // the bundle" tier's gifts only unlock once a full bundle set is present.
     for (const tier of config.tiers || []) {
-      if (typeof tier.quantity === "number" && total >= tier.quantity) {
-        for (const gift of tier.gifts || []) {
-          if (!gift || !gift.variantId) continue;
-          const per = typeof gift.quantity === "number" ? gift.quantity : 1;
-          const qty = gift.perUnit === true ? per * total : per;
-          freeGiftQty.set(
-            gift.variantId,
-            Math.max(freeGiftQty.get(gift.variantId) || 0, qty),
-          );
-        }
+      if (typeof tier.quantity !== "number") continue;
+      const isBundleTier =
+        Array.isArray(tier.bundleItems) && tier.bundleItems.length > 0;
+      const qualifies = isBundleTier
+        ? bundleSetsCompleted(tier, total, groups) >= 1
+        : total >= tier.quantity;
+      if (!qualifies) continue;
+      for (const gift of tier.gifts || []) {
+        if (!gift || !gift.variantId) continue;
+        const per = typeof gift.quantity === "number" ? gift.quantity : 1;
+        const qty = gift.perUnit === true ? per * total : per;
+        freeGiftQty.set(
+          gift.variantId,
+          Math.max(freeGiftQty.get(gift.variantId) || 0, qty),
+        );
       }
     }
   }

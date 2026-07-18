@@ -459,6 +459,24 @@
       });
     }
 
+    // "Complete the bundle" items on the selected tier only (unlike gifts,
+    // these aren't granted "at/above" — a bundle is a specific break).
+    function bundleItemsFor(selectedLabel) {
+      var items = [];
+      (selectedLabel.getAttribute("data-qb-bundle-items") || "")
+        .split(",")
+        .forEach(function (pair) {
+          pair = pair.trim();
+          if (!pair) return;
+          var parts = pair.split(":");
+          var id = parts[0];
+          var qty = parseInt(parts[1], 10) || 1;
+          if (!id) return;
+          items.push({ id: Number(id), quantity: qty });
+        });
+      return items;
+    }
+
     // The line items to add for the current selection (main product + gifts).
     //  • Per-item pickers on  → one line per item, using each item's chosen
     //    variant (identical variants are merged into one line with a count).
@@ -500,7 +518,7 @@
         items = [{ id: Number(variantId), quantity: qty }];
       }
 
-      return items.concat(giftItems(label));
+      return items.concat(bundleItemsFor(label)).concat(giftItems(label));
     }
 
     function select(tier) {

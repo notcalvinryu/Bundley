@@ -177,6 +177,7 @@
           data-qb-discount-type="{{ tier.discountType }}"
           data-qb-discount-value="{{ tier.discountValue }}"
           data-qb-gifts="{% for gift in tier.gifts %}{% assign gq = gift.quantity | default: 1 %}{% if gift.perUnit %}{% assign gq = gq | times: add_qty %}{% endif %}{{ gift.variantId | split: '/' | last }}:{{ gq }}{% unless forloop.last %},{% endunless %}{% endfor %}"
+          data-qb-bundle-items="{% for item in tier.bundleItems %}{% assign qb_bi_product = all_products[item.handle] %}{% if qb_bi_product %}{{ qb_bi_product.selected_or_first_available_variant.id }}:{{ item.quantity | default: 1 }}{% unless forloop.last %},{% endunless %}{% endif %}{% endfor %}"
         >
           {%- if tier.badgeText != blank -%}
             <span class="qb-badge">{{ tier.badgeText }}</span>
@@ -232,6 +233,35 @@
           </span>
           </span>
         </label>
+        {%- if tier.bundleItems and tier.bundleItems.size > 0 -%}
+          <div class="qb-bundle">
+            {%- for item in tier.bundleItems -%}
+              {%- assign item_product = all_products[item.handle] -%}
+              {%- if item_product -%}
+                {%- assign item_variant = item_product.selected_or_first_available_variant -%}
+                {%- assign item_qty = item.quantity | default: 1 -%}
+                <div class="qb-bundle__item">
+                  {%- if item_product.featured_media -%}
+                    <img
+                      class="qb-bundle__img"
+                      src="{{ item_product.featured_media | image_url: width: 80 }}"
+                      alt=""
+                      width="40"
+                      height="40"
+                      loading="lazy"
+                    >
+                  {%- endif -%}
+                  <span class="qb-bundle__text">
+                    <span class="qb-bundle__title">
+                      {{ item_product.title }}{% if item_qty > 1 %} × {{ item_qty }}{% endif %}
+                    </span>
+                    <span class="qb-bundle__price">{{ item_variant.price | money }}</span>
+                  </span>
+                </div>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
         {%- if tier.gifts and tier.gifts.size > 0 -%}
           <div class="qb-gifts">
             {%- for gift in tier.gifts -%}

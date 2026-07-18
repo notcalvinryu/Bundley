@@ -310,6 +310,51 @@
   color: var(--qb-subtitle, #6b7280);
 }
 
+/* "Complete the bundle" product boxes, shown as a panel connecting to the
+   bar's bottom edge (the same joined-panel treatment as gifts/variants). */
+.qb-bundle {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 2px solid var(--qb-border, #e3e3e3);
+  border-top: none;
+  border-radius: 0 0 var(--qb-tier-radius, 12px) var(--qb-tier-radius, 12px);
+  order: 0;
+}
+
+.qb-bundle__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.86em;
+}
+
+.qb-bundle__img {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--qb-border, #e3e3e3);
+  flex: 0 0 auto;
+}
+
+.qb-bundle__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qb-bundle__title {
+  font-weight: 600;
+  color: var(--qb-label, #1a1a1a);
+}
+
+.qb-bundle__price {
+  color: var(--qb-price, #1a1a1a);
+}
+
 /* Free gift lines, shown as a panel that connects to the bar's bottom edge. */
 .qb-gifts {
   display: flex;
@@ -322,26 +367,42 @@
   border-radius: 0 0 var(--qb-tier-radius, 12px) var(--qb-tier-radius, 12px);
 }
 
-/* Square the bar's bottom corners so the gift panel joins seamlessly, and
-   match the panel's border to the bar's state (accent when selected/highlight). */
+/* Square the bar's bottom corners so the bundle/gift panel joins seamlessly,
+   and match each panel's border to the bar's state (accent when
+   selected/highlight). */
+.qb-tier-wrap:has(.qb-bundle) .qb-tier,
 .qb-tier-wrap:has(.qb-gifts) .qb-tier {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
 
+.qb-tier-wrap:has(.qb-tier--selected) .qb-bundle,
+.qb-tier-wrap:has(.qb-tier--highlight) .qb-bundle,
 .qb-tier-wrap:has(.qb-tier--selected) .qb-gifts,
 .qb-tier-wrap:has(.qb-tier--highlight) .qb-gifts {
   border-color: var(--qb-accent, #3b5bfd);
 }
 
-/* When a tier has both, the per-item variant panel sits directly under the bar
-   (the "second box") and the gift panel below it — all joined. */
+/* When a tier has more than one of these joined panels, stack them in a
+   fixed visual order: bundle products, then per-item variants, then gifts —
+   and square off every seam except the very last panel's bottom corners. */
 .qb-tier__variants {
   order: 1;
 }
 
 .qb-gifts {
   order: 2;
+}
+
+.qb-tier-wrap:has(.qb-gifts) .qb-bundle,
+.qb-tier-wrap:has(.qb-gifts) .qb-tier__variants {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.qb-tier-wrap:has(.qb-tier__variants) .qb-bundle {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .qb-tier-wrap:has(.qb-gifts) .qb-tier__variants {

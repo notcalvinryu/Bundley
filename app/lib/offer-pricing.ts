@@ -49,7 +49,7 @@ export const OFFER_TYPE_META: {
     id: "BUNDLE",
     title: "Complete the bundle",
     caption: "Complete the bundle",
-    available: false,
+    available: true,
   },
   {
     id: "SUBSCRIPTION",
@@ -474,6 +474,46 @@ export function computeOfferPricing(
   return input.tiers.map((tier) => computeTierPricing(input.basePrice, tier));
 }
 
+// Pricing for a "complete the bundle" break: the anchor product (this offer's
+// own product, `tier.quantity` units of it) plus every bundle item at its own
+// price, discounted as a whole by `discountValue`% (or a flat $ off per unit).
+export function computeBundlePricing(
+  basePrice: number,
+  tier: TierInput,
+): TierPricing {
+  const anchorQty = Math.max(1, Math.floor(tier.quantity));
+  const items = tier.bundleItems ?? [];
+  const itemsTotal = items.reduce(
+    (sum, item) => sum + item.price * Math.max(1, Math.floor(item.quantity)),
+    0,
+  );
+  const compareAt = round(basePrice * anchorQty + itemsTotal);
+  let total = compareAt;
+  if (tier.discountType === "PERCENT") {
+    total = round(compareAt * (1 - clamp(tier.discountValue, 0, 100) / 100));
+  } else if (tier.discountType === "FIXED_PER_UNIT") {
+    const units = anchorQty + items.reduce(
+      (sum, item) => sum + Math.max(1, Math.floor(item.quantity)),
+      0,
+    );
+    total = round(Math.max(0, compareAt - tier.discountValue * units));
+  }
+  const savings = round(compareAt - total);
+  const savingsPercent = compareAt > 0 ? round((savings / compareAt) * 100) : 0;
+  return { quantity: anchorQty, unitPrice: total, total, compareAt, savings, savingsPercent };
+}
+
+// Bundle tiers price differently from ordinary quantity tiers (sum of distinct
+// product prices, not basePrice × quantity) — pick the right calculator.
+export function computeAnyTierPricing(
+  basePrice: number,
+  tier: TierInput,
+): TierPricing {
+  return tier.bundleItems && tier.bundleItems.length > 0
+    ? computeBundlePricing(basePrice, tier)
+    : computeTierPricing(basePrice, tier);
+}
+
 // Total units a tier puts in the cart: quantity breaks = the quantity; BXGY =
 // buy (X) + get (Y). The discount function matches a cart line against this.
 export function tierTotalUnits(tier: TierInput): number {
@@ -554,9 +594,49 @@ function validateBxgy(input: OfferInput): string[] {
   return errors;
 }
 
+// Validate a "Complete the bundle" offer. Breaks are looser than quantity
+// tiers: a break is either a normal quantity tier on the anchor product, or a
+// bundle break (has bundleItems) — those aren't quantity-unique since several
+// bundle breaks can all sit at quantity 1.
+function validateBundle(input: OfferInput): string[] {
+  const errors: string[] = [];
+
+  if (!input.title.trim()) errors.push("Offer title is required.");
+  if (!input.productId) errors.push("Select a product for this offer.");
+  if (input.basePrice <= 0)
+    errors.push("The product needs a base price greater than 0.");
+  if (input.tiers.length < 1) errors.push("Add at least one break.");
+  if (!input.tiers.some((t) => (t.bundleItems ?? []).length > 0))
+    errors.push("Add at least one product to a break to complete the bundle.");
+
+  const seenQuantityTiers = new Set<number>();
+  for (const tier of input.tiers) {
+    if (tier.quantity < 1) errors.push("Every break needs a quantity of 1+.");
+    const isBundleTier = (tier.bundleItems ?? []).length > 0;
+    if (!isBundleTier) {
+      if (seenQuantityTiers.has(tier.quantity))
+        errors.push(`Duplicate tier for quantity ${tier.quantity}.`);
+      seenQuantityTiers.add(tier.quantity);
+    }
+
+    if (tier.discountType === "PERCENT") {
+      if (tier.discountValue < 0 || tier.discountValue > 100)
+        errors.push("Percent discount must be between 0 and 100.");
+    }
+    if (tier.discountType === "FIXED_PER_UNIT" && tier.discountValue < 0)
+      errors.push("Fixed discount cannot be negative.");
+  }
+
+  if (input.tiers.filter((t) => t.highlight).length > 1)
+    errors.push("Only one tier can be marked as Most popular.");
+
+  return errors;
+}
+
 // Validate an offer's configuration. Returns a list of human-readable errors.
 export function validateOffer(input: OfferInput): string[] {
   if (input.type === "BXGY") return validateBxgy(input);
+  if (input.type === "BUNDLE") return validateBundle(input);
 
   const errors: string[] = [];
 

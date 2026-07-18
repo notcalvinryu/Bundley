@@ -1,0 +1,55 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": { "amountPerQuantity": { "amount": "100.00" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "metafield": {
+                  "value": "{\"title\":\"Vortex Base\",\"basePrice\":100,\"tiers\":[{\"quantity\":1,\"discountType\":\"PERCENT\",\"discountValue\":20,\"bundleItems\":[{\"productId\":\"gid://shopify/Product/2\",\"handle\":\"pump\",\"title\":\"Vortex Pump\",\"price\":40,\"imageUrl\":null,\"quantity\":1}]}]}"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": { "amountPerQuantity": { "amount": "40.00" } },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/2",
+              "product": {
+                "id": "gid://shopify/Product/2",
+                "metafield": {
+                  "value": "{\"title\":\"Vortex Base\",\"basePrice\":100,\"tiers\":[{\"quantity\":1,\"discountType\":\"PERCENT\",\"discountValue\":20,\"bundleItems\":[{\"productId\":\"gid://shopify/Product/2\",\"handle\":\"pump\",\"title\":\"Vortex Pump\",\"price\":40,\"imageUrl\":null,\"quantity\":1}]}]}"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "ALL",
+      "discounts": [
+        {
+          "message": "Complete the bundle",
+          "targets": [
+            { "cartLine": { "id": "gid://shopify/CartLine/1", "quantity": 1 } },
+            { "cartLine": { "id": "gid://shopify/CartLine/2", "quantity": 1 } }
+          ],
+          "value": { "percentage": { "value": "20" } }
+        }
+      ]
+    }
+  }
+}

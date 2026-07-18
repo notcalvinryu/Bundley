@@ -47,6 +47,7 @@ import {
   validateOffer,
   computeTierPricing,
   computeBxgyPricing,
+  computeAnyTierPricing,
   parseTheme,
   normalizeTheme,
   THEME_FIELDS,
@@ -275,6 +276,23 @@ function defaultBxgyTiers(): TierInput[] {
   ];
 }
 
+// "Complete the bundle" starter: one break that's already a bundle (empty
+// bundleItems, ready for the merchant to add products) discounted as a whole.
+function defaultBundleTiers(): TierInput[] {
+  return [
+    {
+      quantity: 1,
+      discountType: "PERCENT",
+      discountValue: 20,
+      label: "Complete the bundle",
+      subtitle: null,
+      badgeText: null,
+      highlight: true,
+      bundleItems: [],
+    },
+  ];
+}
+
 export default function OfferEditor() {
   const {
     offer,
@@ -348,7 +366,12 @@ export default function OfferEditor() {
       bundleItems: sanitizeBundleItems(
         tier.bundleItems ? JSON.parse(tier.bundleItems) : [],
       ),
-    })) ?? (isBxgy ? defaultBxgyTiers() : defaultTiers()),
+    })) ??
+      (isBxgy
+        ? defaultBxgyTiers()
+        : offerType === "BUNDLE"
+          ? defaultBundleTiers()
+          : defaultTiers()),
   );
   const [theme, setTheme] = useState<WidgetTheme>(() => {
     const base = parseTheme(offer?.theme ?? null);
@@ -577,6 +600,22 @@ export default function OfferEditor() {
           subtitle: null,
           badgeText: null,
           highlight: false,
+        },
+      ]);
+      return;
+    }
+    if (offerType === "BUNDLE") {
+      setTiers((current) => [
+        ...current,
+        {
+          quantity: 1,
+          discountType: "PERCENT",
+          discountValue: 20,
+          label: "Complete the bundle",
+          subtitle: null,
+          badgeText: null,
+          highlight: false,
+          bundleItems: [],
         },
       ]);
       return;
@@ -1091,7 +1130,11 @@ export default function OfferEditor() {
               <BlockStack gap="300">
                 <InlineStack align="space-between" blockAlign="center">
                   <Text as="h2" variant="headingMd">
-                    {isBxgy ? "Buy X, get Y tiers" : "Quantity tiers"}
+                    {isBxgy
+                      ? "Buy X, get Y tiers"
+                      : offerType === "BUNDLE"
+                        ? "Bundle breaks"
+                        : "Quantity tiers"}
                   </Text>
                   <Button onClick={addTier}>Add tier</Button>
                 </InlineStack>
@@ -1102,13 +1145,24 @@ export default function OfferEditor() {
                     (100% = free).
                   </Text>
                 )}
+                {offerType === "BUNDLE" && (
+                  <Text as="p" tone="subdued" variant="bodySm">
+                    Add products to a break below to make it a “complete the
+                    bundle” — they’re added together with this product and
+                    discounted as a whole. Breaks left without products behave
+                    as normal quantity tiers.
+                  </Text>
+                )}
 
                 {tiers.map((tier, index) => {
+                  const isBundleTier = (tier.bundleItems ?? []).length > 0;
                   const summary =
                     tier.label ||
-                    (isBxgy
-                      ? `Buy ${tier.quantity}, get ${tier.getQuantity ?? 1} free`
-                      : `${tier.quantity} pcs.`);
+                    (isBundleTier
+                      ? "Complete the bundle"
+                      : isBxgy
+                        ? `Buy ${tier.quantity}, get ${tier.getQuantity ?? 1} free`
+                        : `${tier.quantity} pcs.`);
                   return (
                     <Box
                       key={index}
@@ -1136,7 +1190,13 @@ export default function OfferEditor() {
                       <FormLayout>
                         <FormLayout.Group condensed>
                           <TextField
-                            label={isBxgy ? "Buy quantity" : "Quantity"}
+                            label={
+                              isBxgy
+                                ? "Buy quantity"
+                                : isBundleTier
+                                  ? "Main product qty"
+                                  : "Quantity"
+                            }
                             type="number"
                             min={1}
                             autoComplete="off"
@@ -1162,7 +1222,13 @@ export default function OfferEditor() {
                             />
                           )}
                           <Select
-                            label={isBxgy ? "Get-item discount" : "Discount"}
+                            label={
+                              isBxgy
+                                ? "Get-item discount"
+                                : isBundleTier
+                                  ? "Bundle discount"
+                                  : "Discount"
+                            }
                             options={DISCOUNT_OPTIONS}
                             value={tier.discountType}
                             onChange={(v) =>
@@ -2031,12 +2097,15 @@ function WidgetPreview({
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {tiers.map((tier, index) => {
+          const isBundleTier = (tier.bundleItems ?? []).length > 0;
           const pricing = isBxgy
             ? computeBxgyPricing(basePrice, tier)
-            : computeTierPricing(basePrice, tier);
-          const labelFallback = isBxgy
-            ? `Buy ${tier.quantity}, get ${tier.getQuantity ?? 1} free`
-            : `${tier.quantity} pcs.`;
+            : computeAnyTierPricing(basePrice, tier);
+          const labelFallback = isBundleTier
+            ? "Complete the bundle"
+            : isBxgy
+              ? `Buy ${tier.quantity}, get ${tier.getQuantity ?? 1} free`
+              : `${tier.quantity} pcs.`;
           const selected = index === selectedIndex;
           const accented = selected || tier.highlight;
           const hasGifts = (tier.gifts ?? []).length > 0;
@@ -2148,6 +2217,49 @@ function WidgetPreview({
                 )}
               </div>
               </div>
+              {isBundleTier && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(tier.bundleItems ?? []).map((item, ii) => (
+                    <div
+                      key={ii}
+                      style={{
+                        flex: "1 1 120px",
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "center",
+                        border: `1px solid ${theme.borderColor}`,
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
+                    >
+                      {item.imageUrl && (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          width={36}
+                          height={36}
+                          style={{ borderRadius: 6, objectFit: "cover" }}
+                        />
+                      )}
+                      <div>
+                        <div
+                          style={{
+                            fontSize: "0.86em",
+                            fontWeight: 600,
+                            color: theme.labelColor,
+                          }}
+                        >
+                          {item.title}
+                        </div>
+                        <div style={{ fontSize: "0.8em", color: theme.priceColor }}>
+                          ${item.price.toFixed(2)}
+                          {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {selected && theme.letChooseVariantPerItem && (
                 <VariantPickerMock
                   theme={theme}
