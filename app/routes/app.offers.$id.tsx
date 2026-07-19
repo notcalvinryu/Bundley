@@ -2034,13 +2034,19 @@ function WidgetPreview({
   }
   const countdownText = formatCountdown(countdownRemaining);
 
+  // The synced metafield sorts tiers ascending by quantity (stable, so ties —
+  // common between bundle breaks, which often share quantity 1 — keep their
+  // edit order). Mirror that here so the preview's tier order matches what
+  // actually renders on the storefront.
+  const previewTiers = tiers.slice().sort((a, b) => a.quantity - b.quantity);
+
   // Mirror the storefront selection rule: explicit default tier first, then
   // the highlighted tier, then the first tier.
   const byDefault =
     theme.defaultTierQuantity === null
       ? -1
-      : tiers.findIndex((t) => t.quantity === theme.defaultTierQuantity);
-  const byHighlight = tiers.findIndex((t) => t.highlight);
+      : previewTiers.findIndex((t) => t.quantity === theme.defaultTierQuantity);
+  const byHighlight = previewTiers.findIndex((t) => t.highlight);
   const selectedIndex = byDefault >= 0 ? byDefault : Math.max(0, byHighlight);
 
   return (
@@ -2096,7 +2102,7 @@ function WidgetPreview({
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {tiers.map((tier, index) => {
+        {previewTiers.map((tier, index) => {
           const isBundleTier = (tier.bundleItems ?? []).length > 0;
           const pricing = isBxgy
             ? computeBxgyPricing(basePrice, tier)

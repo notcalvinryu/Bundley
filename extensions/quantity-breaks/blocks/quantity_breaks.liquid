@@ -140,7 +140,40 @@
         {%- endif -%}
         {%- if unit < 0 -%}{%- assign unit = 0 -%}{%- endif -%}
 
-        {%- if is_bxgy -%}
+        {%- assign is_bundle = false -%}
+        {%- if tier.bundleItems and tier.bundleItems.size > 0 -%}
+          {%- assign is_bundle = true -%}
+        {%- endif -%}
+
+        {%- if is_bundle -%}
+          {%- comment -%}
+            "Complete the bundle": total/compare are the anchor product plus
+            every bundle item's own live price (not basePrice × quantity),
+            discounted as a whole — matches the admin's bundle pricing math.
+          {%- endcomment -%}
+          {%- assign add_qty = qty -%}
+          {%- assign bundle_units = qty -%}
+          {%- assign compare = base | times: qty -%}
+          {%- for item in tier.bundleItems -%}
+            {%- assign item_product = all_products[item.handle] -%}
+            {%- if item_product -%}
+              {%- assign item_qty = item.quantity | default: 1 -%}
+              {%- assign item_price = item_product.selected_or_first_available_variant.price | divided_by: 100.0 -%}
+              {%- assign item_total = item_price | times: item_qty -%}
+              {%- assign compare = compare | plus: item_total -%}
+              {%- assign bundle_units = bundle_units | plus: item_qty -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- assign total = compare -%}
+          {%- if tier.discountType == 'PERCENT' -%}
+            {%- assign factor = 100 | minus: tier.discountValue -%}
+            {%- assign total = compare | times: factor | divided_by: 100.0 -%}
+          {%- elsif tier.discountType == 'FIXED_PER_UNIT' -%}
+            {%- assign flat_off = tier.discountValue | times: bundle_units -%}
+            {%- assign total = compare | minus: flat_off -%}
+          {%- endif -%}
+          {%- if total < 0 -%}{%- assign total = 0 -%}{%- endif -%}
+        {%- elsif is_bxgy -%}
           {%- assign add_qty = qty | plus: get_qty -%}
           {%- assign paid_x = base | times: qty -%}
           {%- assign paid_y = unit | times: get_qty -%}
