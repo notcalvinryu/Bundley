@@ -649,9 +649,14 @@ export function validateOffer(input: OfferInput): string[] {
   const seen = new Set<number>();
   for (const tier of input.tiers) {
     if (tier.quantity < 1) errors.push("Every tier needs a quantity of 1+.");
-    if (seen.has(tier.quantity))
-      errors.push(`Duplicate tier for quantity ${tier.quantity}.`);
-    seen.add(tier.quantity);
+    // A "complete the bundle" break is matched by its bundle contents, not by
+    // quantity, so it's exempt from the quantity-uniqueness requirement.
+    const isBundleTier = (tier.bundleItems ?? []).length > 0;
+    if (!isBundleTier) {
+      if (seen.has(tier.quantity))
+        errors.push(`Duplicate tier for quantity ${tier.quantity}.`);
+      seen.add(tier.quantity);
+    }
 
     if (tier.discountType === "PERCENT") {
       if (tier.discountValue < 0 || tier.discountValue > 100)
