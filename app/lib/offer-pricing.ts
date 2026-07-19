@@ -556,9 +556,11 @@ export function computeBxgyPricing(
   };
 }
 
-// Validate a BXGY offer. Each tier is a "buy X, get Y" rule; the discount
-// function matches a cart line by its total units (X+Y), so those totals must
-// be unique.
+// Validate a BXGY offer. Each ordinary tier is a "buy X, get Y" rule; the
+// discount function matches a cart line by its total units (X+Y), so those
+// totals must be unique. A tier that's also a "complete the bundle" break
+// (has bundleItems) is matched by its bundle contents instead, so it's exempt
+// from both the totals-uniqueness and get-quantity requirements.
 function validateBxgy(input: OfferInput): string[] {
   const errors: string[] = [];
 
@@ -572,13 +574,17 @@ function validateBxgy(input: OfferInput): string[] {
   for (const tier of input.tiers) {
     const x = tier.quantity;
     const y = tier.getQuantity ?? 0;
+    const isBundleTier = (tier.bundleItems ?? []).length > 0;
     if (x < 1) errors.push("Every tier needs a buy quantity of 1+.");
-    if (y < 1) errors.push("Every tier needs a get quantity of 1+.");
+    if (y < 1 && !isBundleTier)
+      errors.push("Every tier needs a get quantity of 1+.");
 
-    const total = x + y;
-    if (seenTotals.has(total))
-      errors.push(`Two tiers both total ${total} items — make them distinct.`);
-    seenTotals.add(total);
+    if (!isBundleTier) {
+      const total = x + y;
+      if (seenTotals.has(total))
+        errors.push(`Two tiers both total ${total} items — make them distinct.`);
+      seenTotals.add(total);
+    }
 
     if (tier.discountType === "PERCENT") {
       if (tier.discountValue < 0 || tier.discountValue > 100)
@@ -594,10 +600,10 @@ function validateBxgy(input: OfferInput): string[] {
   return errors;
 }
 
-// Validate a "Complete the bundle" offer. Breaks are looser than quantity
-// tiers: a break is either a normal quantity tier on the anchor product, or a
-// bundle break (has bundleItems) — those aren't quantity-unique since several
-// bundle breaks can all sit at quantity 1.
+// Validate a "Complete the bundle" offer. Breaks aren't quantity-unique here:
+// several bundle breaks can legitimately all need just 1 of the anchor
+// product, and a break started empty (before its products are added) would
+// otherwise collide with any other break sitting at the same quantity.
 function validateBundle(input: OfferInput): string[] {
   const errors: string[] = [];
 
@@ -609,15 +615,8 @@ function validateBundle(input: OfferInput): string[] {
   if (!input.tiers.some((t) => (t.bundleItems ?? []).length > 0))
     errors.push("Add at least one product to a break to complete the bundle.");
 
-  const seenQuantityTiers = new Set<number>();
   for (const tier of input.tiers) {
     if (tier.quantity < 1) errors.push("Every break needs a quantity of 1+.");
-    const isBundleTier = (tier.bundleItems ?? []).length > 0;
-    if (!isBundleTier) {
-      if (seenQuantityTiers.has(tier.quantity))
-        errors.push(`Duplicate tier for quantity ${tier.quantity}.`);
-      seenQuantityTiers.add(tier.quantity);
-    }
 
     if (tier.discountType === "PERCENT") {
       if (tier.discountValue < 0 || tier.discountValue > 100)
